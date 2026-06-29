@@ -1,0 +1,7 @@
+beautifulsoup4>=4.12
+PyYAML>=6.0
+openapi-spec-validator>=0.7
+# optional, only for the `rendered` fallback strategy:
+# playwright>=1.40   (then: playwright install chromium)
+# optional, only for spec_import convert_to: openapi3 (Swagger 2.0 -> OpenAPI 3.0):
+#   Node.js + npx  (the converter `swagger2openapi` is auto-fetched via `npx -y`)

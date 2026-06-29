@@ -1,0 +1,73 @@
+# ── Site config TEMPLATE — copy to config/<site>.yaml and fill in ────────────
+# The code in harvester/ is generic; everything site-specific lives here.
+# See config/fadada.yaml for a complete, working example.
+
+site: CHANGE_ME
+base_url: https://docs.example.com
+
+# ── Acquisition: cheapest strategy that works wins (tried in `order`) ─────────
+acquire:
+  order: [content_api, static_html, rendered]
+  # BEST: a direct content endpoint. Discover ONCE via browser Network tab
+  # (see runbook/LOOP.md). Then the whole pipeline is plain HTTP — no browser.
+  content_api:
+    enabled: false
+    # Template uses any page key. {doc_id} aliases page.doc_id|id (single-id sites);
+    # multi-id sites can reference several keys, e.g. {nodeId}/{articleId}.
+    url_template: "https://docs.example.com/api/doc/{doc_id}"
+    method: GET
+    response_format: json           # json | html | markdown
+    content_pointer: "data.content" # dotted path into the JSON response
+    content_is: html                # html | markdown
+    headers: {}                     # optional site request headers, e.g.
+                                    #   {X-Requested-With: XMLHttpRequest} if the
+                                    #   gateway 403s plain requests
+  static_html:                      # FALLBACK 1: pre-downloaded HTML files
+    enabled: false
+    html_root: ".."                 # relative to the project root
+  rendered:                         # FALLBACK 2: headless render (needs playwright)
+    enabled: false
+    url_template: "https://docs.example.com/doc/{doc_id}"
+    wait_selector: ".article-body"
+
+# ── Where title / time / body live in a page's HTML ──────────────────────────
+selectors:
+  title: ".article-title"
+  time:  ".article-time"            # optional; "" if none
+  body:  ".article-body"
+
+# ── How an API page lays out path / method / param tables ────────────────────
+structure:
+  path_regex: '(?:请求地址|Endpoint|Path)[:：]\s*([^\s<）)]+)'
+  method_regex: '(?:请求方式|Method)[:：]\s*(GET|POST|PUT|DELETE|PATCH)'
+  request_section:  ["请求参数", "Request Parameters", "Parameters"]
+  response_section: ["响应结果", "响应参数", "Response", "Returns"]
+  example_request_section:  ["请求示例", "Request Example"]
+  example_response_section: ["响应示例", "Response Example"]
+  required_true_values: ["是", "Y", "true", "Required", "必填"]
+  columns: {name: 0, type: 1, required: 2, desc: 3}
+  nested_indent_unit: 4
+
+# ── Pages to harvest (static_html needs `file`; api strategies need `doc_id`) ─
+pages:
+  - {id: "01", title: "Overview", doc_id: "OVERVIEW_ID", api: false}
+  - {id: "02", title: "Create thing", doc_id: "DOC_ID_1"}
+
+# ── OpenAPI emission ─────────────────────────────────────────────────────────
+openapi:
+  title: "Example API"
+  version: "1.0"
+  default_method: POST
+  servers:
+    - url: "https://{host}"
+      variables: {host: {default: "api.example.com"}}
+  envelope: {code: code, msg: msg, data: data}
+  security_headers: []              # e.g. [{key: ApiKey, name: X-Api-Key, desc: "..."}]
+
+# ── Output locations (relative to project root) ──────────────────────────────
+output:
+  markdown_dir: "out/CHANGE_ME/markdown"
+  models_json:  "out/CHANGE_ME/models.json"
+  openapi:      "out/CHANGE_ME/openapi.yaml"
+  report:       "out/CHANGE_ME/checks-report.json"
+golden_dir: "golden/CHANGE_ME"

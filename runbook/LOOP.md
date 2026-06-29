@@ -1,0 +1,54 @@
+# 自改进循环（evaluator–optimizer loop）
+
+把"人肉调试抓取器"形式化成一个可重复的循环：**模型用来生产/改进脚本，脚本确定性地永久复用。**
+新页面进来只跑脚本；只有当某个不变量被打破（站点改版/文档更新）才把那一处升级给 Agent。
+
+## 循环主体
+```
+        ┌─────────────────────────────────────────────┐
+        ▼                                             │
+  run.py <config>  ──→  checks-report.json  ──→  fails/warns?
+        ▲                                       │ 有
+        │                                       ▼
+        └──── 改 脚本/config（最小改动） ◀── 分类失败并定位到具体阶段
+                                                │ 全绿/稳定
+                                                ▼
+                                              停止（产物即交付）
+```
+
+每轮：
+1. `python run.py config/<site>.yaml`
+2. 读 `out/<site>/checks-report.json`
+3. `ok=false` → 看 `fails`，分类（见下）→ **改脚本或 config，不要手改产物** → 回到 1
+4. `ok=true` 且与上一轮一致 → 收敛，停。把当轮验证过的 markdown 冻结进 `golden/<site>/`（快照测试，挡住未来回归）。
+
+## 失败分类 → 改哪里
+| 失败信号（来自 checks） | 根因 | 改动位置 |
+|---|---|---|
+| 未解析到 path/method | 正则不匹配该站点写法 | `config.structure.path_regex/method_regex` |
+| 请求/响应表为空 | 小节标题或正文选择器不对 | `config.structure.*_section` / `config.selectors` |
+| 残留"复制代码"/占位符 | 代码块噪声新形态 | `convert.py: CODE_NOISE` |
+| 代码围栏不配对 | `<pre>` 结构异常 | `convert.py: _pre` |
+| 与 golden 不一致 | 转换器行为变了（可能是改进也可能是回归） | 人判断：是改进就更新 golden；是回归就修 `convert.py` |
+| OpenAPI 校验失败 | 类型/嵌套映射缺口 | `build_openapi.py: _node_schema` |
+| 字段嵌套层级错乱 | 该站点缩进单位/字符不同 | `config.structure.nested_indent_unit` / `common.indent_depth` |
+
+每次改动在 `CHANGELOG.md` 追加一行（什么信号→什么改动），循环的"记忆"。
+
+## 一次性：发现 content_api（把浏览器/模型成本摊薄到零）
+内容多为异步加载，正文背后一定有接口。**只需做一次**：
+1. 浏览器打开任意文档页，开 DevTools → Network → 过滤 XHR/Fetch。
+2. 找返回正文（Markdown 或含正文 HTML 的 JSON）的请求，记下 URL 形态、`{doc_id}` 位置、响应里正文的字段路径。
+3. 填进 `config.acquire.content_api`（`url_template` / `content_pointer` / `content_is`），`enabled: true`。
+4. 之后整模块/整站同类页面都走纯 HTTP，几秒拉完，无浏览器无模型。
+
+> 注：沙箱网络是 allowlist 的，目标站点可能不可直连——脚本写对即可，在能访问该域名的环境执行。
+
+## 何时升级给 Agent（按需介入，而非每次全程）
+- 新站点首次接入：写 config + 跑通循环。
+- checks 出现"未见过的"失败形态：扩展对应脚本。
+- 文档语义层（枚举取值、命名、矛盾修订、时序图）：模型判断后落成脚本/配置或一次性产物。
+其余情况——尤其文档增量更新——交给定时任务跑脚本 + 与上次快照 diff，自动告警，无需 Agent。
+
+## 与定时任务结合
+周期性 `run.py` → 和上一份 `out/` 快照 diff → 有变化则告警（文档更新检测）。

@@ -1,0 +1,72 @@
+# ── Site config: 法大大开放平台 开发者门户 (dev.fadada.com, API 5.1) ───────────
+# SPA doc site. The page shell at dev.fadada.com is empty; doc bodies come from a
+# content API on cloud.fadada.com/api (discovered via the JS bundle's baseURL map).
+
+site: fadada-dev
+base_url: https://dev.fadada.com
+
+# ── Acquisition ──────────────────────────────────────────────────────────────
+acquire:
+  order: [content_api, static_html, rendered]
+
+  # The doc body endpoint. URL needs TWO ids (nodeId in path, articleId in query)
+  # and XHR/version headers (gateway returns 403 without them). The response field
+  # `articleMarkdown` is already clean Markdown with tables expanded.
+  content_api:
+    enabled: true
+    url_template: "https://cloud.fadada.com/api/edge-developer/document/nodes/{nodeId}/article?id={articleId}&version=5.1"
+    method: GET
+    response_format: json
+    content_pointer: "articleMarkdown"
+    content_is: markdown
+    headers:
+      X-Requested-With: XMLHttpRequest
+      X-Request-Version: V5
+      User-Agent: "Mozilla/5.0"
+
+  static_html:
+    enabled: false
+  rendered:
+    enabled: false
+
+# ── Parsing (only used for HTML content; kept for completeness) ───────────────
+selectors:
+  title: ".docs-information__title"
+  time:  ".docs-information__time"
+  body:  ".docs-subject"
+
+# ── Doc structure (used when an endpoint page is parsed for OpenAPI) ──────────
+structure:
+  path_regex: '请求地址[:：]\s*([^\s<）)]+)'
+  method_regex: '请求方式[:：]\s*(GET|POST|PUT|DELETE|PATCH)'
+  request_section:  ["请求参数"]
+  response_section: ["响应结果", "响应参数"]
+  required_true_values: ["是", "Y", "true", "必填"]
+  columns: {name: 0, type: 1, required: 2, desc: 3}
+  nested_indent_unit: 4
+
+# ── Pages ────────────────────────────────────────────────────────────────────
+# content_api pages need nodeId + articleId. api:false → markdown only, no OpenAPI.
+pages:
+  - {id: "01", title: "API概述", nodeId: "ALGPB7Z1FD", articleId: "TA0WHTSXQYL0NQRB", api: false}
+  - {id: "02", title: "服务访问凭证", nodeId: "YIIWILVURJ", articleId: "YOKJPBLGKQYSBIRV", api: true}
+  - {id: "03", title: "查询应用信息", nodeId: "HFEH4WPOLY", articleId: "9F74NYVTBCUWDUEA", api: true}
+
+# ── OpenAPI emission ─────────────────────────────────────────────────────────
+openapi:
+  title: "法大大开放平台 API (5.1)"
+  version: "5.1"
+  default_method: POST
+  servers:
+    - url: "https://{host}"
+      variables: {host: {default: "api.fadada.com", description: "网关域名占位，按接入环境替换"}}
+  envelope: {code: code, msg: msg, data: data}
+  security_headers: []
+
+# ── Output ───────────────────────────────────────────────────────────────────
+output:
+  markdown_dir: "out/fadada-dev/markdown"
+  models_json:  "out/fadada-dev/models.json"
+  openapi:      "out/fadada-dev/openapi.yaml"
+  report:       "out/fadada-dev/checks-report.json"
+golden_dir: "golden/fadada-dev"

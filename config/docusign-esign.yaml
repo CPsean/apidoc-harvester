@@ -1,0 +1,15 @@
+# ── Site config: Docusign eSignature REST API (official published spec) ──────
+# Docusign publishes a maintained OpenAPI/Swagger spec — the source of truth. So we
+# use the `spec_import` strategy (top of the acquisition ladder) instead of scraping
+# the Gatsby docs site. Download the official Swagger 2.0 and convert to OpenAPI 3.0.
+
+site: docusign-esign
+
+spec_source:
+  url: "https://raw.githubusercontent.com/docusign/OpenAPI-Specifications/master/esignature.rest.swagger-v2.1.json"
+  format: auto            # auto | swagger2 | openapi3
+  convert_to: openapi3    # none (keep native 2.0) | openapi3 (via npx swagger2openapi)
+
+output:
+  openapi: "out/docusign-esign/openapi.yaml"
+  report:  "out/docusign-esign/checks-report.json"

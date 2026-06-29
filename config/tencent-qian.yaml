@@ -1,0 +1,57 @@
+# ── Site config: 腾讯电子签 开发者中心 (qian.tencent.com) ─────────────────────
+# Docusaurus v2 static site — the doc page URL returns fully-rendered HTML with the
+# content in `.theme-doc-markdown`. No content API / browser needed: fetch the page
+# HTML directly via content_api with response_format: html.
+# NOTE: endpoints here are Tencent-Cloud RPC style (POST / + X-TC-Action), not REST
+# paths, so API pages are harvested to Markdown only (api:false) for now.
+
+site: tencent-qian
+base_url: https://qian.tencent.com
+
+acquire:
+  order: [content_api, static_html, rendered]
+  content_api:
+    enabled: true
+    url_template: "https://qian.tencent.com/developers/{doc_id}"
+    method: GET
+    response_format: html          # return the page HTML as-is, then parse selectors
+    headers:
+      User-Agent: "Mozilla/5.0"
+  static_html:
+    enabled: false
+  rendered:
+    enabled: false
+
+selectors:
+  title: "h1"
+  time:  ""
+  body:  ".theme-doc-markdown"
+
+structure:
+  path_regex: '请求地址[:：]\s*([^\s<）)]+)'
+  method_regex: '请求方式[:：]\s*(GET|POST|PUT|DELETE|PATCH)'
+  request_section:  ["请求参数", "输入参数"]
+  response_section: ["响应参数", "输出参数"]
+  required_true_values: ["是", "Y", "true", "必填", "必选"]
+  columns: {name: 0, type: 1, required: 2, desc: 3}
+  nested_indent_unit: 4
+
+pages:
+  - {id: "01", title: "对接应用集成简介", doc_id: "company/overview", api: false}
+  - {id: "02", title: "用PDF文件创建签署流程", doc_id: "companyApis/startFlows/CreateFlowByFiles", api: false}
+
+openapi:
+  title: "腾讯电子签 企业 API"
+  version: "1.0"
+  default_method: POST
+  servers:
+    - url: "https://ess.tencentcloudapi.com"
+  envelope: {}
+  security_headers: []
+
+output:
+  markdown_dir: "out/tencent-qian/markdown"
+  models_json:  "out/tencent-qian/models.json"
+  openapi:      "out/tencent-qian/openapi.yaml"
+  report:       "out/tencent-qian/checks-report.json"
+golden_dir: "golden/tencent-qian"

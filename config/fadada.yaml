@@ -1,0 +1,93 @@
+# ── Example site config: 法大大 (fadada) 合同起草模块 ──────────────────────────
+# A site config is the ONLY thing you write to support a new API-doc site.
+# The code in harvester/ is generic; everything site-specific lives here.
+
+site: fadada
+base_url: https://dev.fadada.com
+
+# ── Acquisition ──────────────────────────────────────────────────────────────
+# Strategies are tried in `order`; first one that is enabled AND resolves wins.
+# Cheapest first. Goal: avoid the browser whenever possible.
+acquire:
+  order: [content_api, static_html, rendered]
+
+  # BEST: a direct content endpoint that returns the doc body as JSON/HTML/MD.
+  # Discover it ONCE via the browser Network tab (see runbook/LOOP.md). After
+  # that this whole pipeline is a plain HTTP script — no browser, no model.
+  content_api:
+    enabled: false
+    url_template: "https://dev.fadada.com/api/doc/{doc_id}"   # PLACEHOLDER — confirm via Network tab
+    method: GET
+    response_format: json          # json | html | markdown
+    content_pointer: "data.content"  # dotted path into the JSON response
+    content_is: html               # html | markdown  (format of the pointed value)
+
+  # FALLBACK 1: pre-downloaded static HTML files (what we have for fadada now).
+  static_html:
+    enabled: true
+    html_root: ".."                # relative to the harvester project root
+
+  # FALLBACK 2: headless render (needs playwright). Only when content is truly
+  # JS-computed with no fetchable source.
+  rendered:
+    enabled: false
+    wait_selector: ".docs-subject"
+
+# ── Parsing: how to find title / time / body inside a page's HTML ────────────
+selectors:
+  title: ".docs-information__title"
+  time:  ".docs-information__time"
+  body:  ".docs-subject"
+
+# ── Doc structure: how an API page lays out path / method / param tables ─────
+structure:
+  path_regex: '请求地址[:：]\s*([^\s<）)]+)'
+  method_regex: '请求方式[:：]\s*(GET|POST|PUT|DELETE|PATCH)'
+  request_section:  ["请求参数"]
+  response_section: ["响应结果", "响应参数"]
+  example_request_section:  ["请求示例"]
+  example_response_section: ["响应示例"]
+  required_true_values: ["是", "Y", "true", "必填"]
+  columns: {name: 0, type: 1, required: 2, desc: 3}
+  nested_indent_unit: 4            # N indent chars (nbsp / full-width space) per nesting level
+
+# ── Pages to harvest ─────────────────────────────────────────────────────────
+# static_html: needs `file`. content_api/rendered: needs `doc_id`.
+# api:false  → converted to markdown but skipped for OpenAPI (overview pages).
+pages:
+  - {id: "01", title: "概述",                 file: "fadada-api-合同起草-概述.html",            api: false}
+  - {id: "02", title: "发起合同协商",          file: "fadada-api-合同起草/01-发起合同协商.html"}
+  - {id: "03", title: "添加协商成员",          file: "fadada-api-合同起草/02-添加协商成员.html"}
+  - {id: "04", title: "删除协商成员",          file: "fadada-api-合同起草/03-删除协商成员.html"}
+  - {id: "05", title: "获取合同协商邀请链接",   file: "fadada-api-合同起草/04-获取合同协商邀请链接.html"}
+  - {id: "06", title: "获取合同协商编辑链接",   file: "fadada-api-合同起草/05-获取合同协商编辑链接.html"}
+  - {id: "07", title: "获取合同起草管理链接",   file: "fadada-api-合同起草/06-获取合同起草管理链接.html"}
+  - {id: "08", title: "合同协商文件定稿",      file: "fadada-api-合同起草/07-合同协商文件定稿.html"}
+  - {id: "09", title: "查询已定稿的合同文件",   file: "fadada-api-合同起草/08-查询已定稿的合同文件.html"}
+  - {id: "10", title: "查询发起的合同协商列表", file: "fadada-api-合同起草/09-查询发起的合同协商列表.html"}
+  - {id: "11", title: "查询参与的合同协商列表", file: "fadada-api-合同起草/10-查询参与的合同协商列表.html"}
+  - {id: "12", title: "更新协商文件",          file: "fadada-api-合同起草/11-更新协商文件.html"}
+
+# ── OpenAPI emission ─────────────────────────────────────────────────────────
+openapi:
+  title: "法大大开放平台 API - 合同起草（协商）"
+  version: "5.1"
+  default_method: POST
+  servers:
+    - url: "https://{host}"
+      variables: {host: {default: "api.fadada.com", description: "网关域名占位，按接入环境替换"}}
+  envelope: {code: code, msg: msg, data: data}   # unified response wrapper field names
+  security_headers:                              # common headers -> apiKey securitySchemes
+    - {key: FascAppId,      name: X-FASC-App-Id,      desc: "应用 AppId"}
+    - {key: FascSignType,   name: X-FASC-Sign-Type,   desc: "签名算法类型，固定 HMAC-SHA256"}
+    - {key: FascSign,       name: X-FASC-Sign,        desc: "请求参数 HMAC-SHA256 签名值"}
+    - {key: FascTimestamp,  name: X-FASC-Timestamp,   desc: "Unix 毫秒时间戳，±5 分钟内"}
+    - {key: FascAccessToken, name: X-FASC-AccessToken, desc: "服务访问凭证 accessToken"}
+
+# ── Output locations (relative to project root) ──────────────────────────────
+output:
+  markdown_dir: "out/fadada/markdown"
+  models_json:  "out/fadada/models.json"
+  openapi:      "out/fadada/openapi.yaml"
+  report:       "out/fadada/checks-report.json"
+golden_dir: "golden/fadada"
