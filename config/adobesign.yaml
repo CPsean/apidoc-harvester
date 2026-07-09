@@ -1,0 +1,16 @@
+# Adobe Acrobat Sign REST API v6 — spec_import worked example WITH normalize.
+# The docs page (secure.na1.adobesign.com/public/docs/restapi/v6) is a Swagger UI
+# shell; the official spec behind it is public. It self-declares OpenAPI 3.1.0 but
+# carries mechanical vendor lint (1155 strict-validation errors: 1122 responses
+# missing `description`, type spellings int/float/double/date, 2 mojibake schema
+# names, OAuth block misplaced in `info`, one boolean `required`) — all fixed
+# deterministically by `normalize: true`.
+site: adobesign
+spec_source:
+  url: "https://secure.na1.adobesign.com/restapijson/v6/restapi.json"
+  format: auto
+  convert_to: none
+  normalize: true
+output:
+  openapi: "out/adobesign/openapi.yaml"
+  report:  "out/adobesign/checks-report.json"

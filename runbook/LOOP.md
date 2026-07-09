@@ -32,6 +32,8 @@
 | 与 golden 不一致 | 转换器行为变了（可能是改进也可能是回归） | 人判断：是改进就更新 golden；是回归就修 `convert.py` |
 | OpenAPI 校验失败 | 类型/嵌套映射缺口 | `build_openapi.py: _node_schema` |
 | 字段嵌套层级错乱 | 该站点缩进单位/字符不同 | `config.structure.nested_indent_unit` / `common.indent_depth` |
+| spec_import 校验失败且全是机械错误（缺 description、int/date 类型名、乱码组件名、info 塞 OAuth） | 厂商 spec 马虎 | `spec_source.normalize: true`；规则不够再扩 `spec_import._normalize`（保持确定性，不发明内容） |
+| spec 下载失败（本机代理下 urllib TLS 被掐 / System32 curl 握手失败） | 环境代理与 TLS 客户端不合 | 已内置：`spec_import._fetch_url` urllib→PATH 解析的 curl 回退；仍失败则换网络环境 |
 
 每次改动在 `CHANGELOG.md` 追加一行（什么信号→什么改动），循环的"记忆"。
 

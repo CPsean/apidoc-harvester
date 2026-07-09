@@ -25,3 +25,16 @@
   改动：新增 `harvester/spec_import.py` 与 `run.py` 分发——config 含 `spec_source` 时，
   下载 spec（url/file）→（Swagger 2.0 经 `npx swagger2openapi` 转 OpenAPI 3.0）→ 校验 → 输出。
   这是获取阶梯的最顶档（spec_import > content_api > static_html > rendered）。见 `config/docusign-esign.yaml`。
+- **#9 spec_import normalize：确定性修复马虎的厂商 spec** —— 信号：Adobe Sign 官方 spec 自称
+  OpenAPI 3.1 但严格校验报 1155 个错（1122 个 response 缺 description、int/float/double/date
+  非法类型名、乱码 schema 名、OAuth 块塞进 info、布尔 required）——全是机械性错误。
+  改动：`spec_import._normalize`（`spec_source.normalize: true` 启用）按纯机械规则修复：缺失
+  必填字符串补 ""（不发明内容）、类型别名映射、组件名清洗+$ref 重写（`_walk_refs` 区分
+  Example 映射里的真 $ref 与字面量载荷）、info 非标准键挪到 x-；`_validate` 改为全量分桶报错
+  （原先只报第一条）；新增 `_dangling_refs` 把源 spec 自带的悬空 $ref 作为 warn 暴露（忠实保留
+  不修）。见 `config/adobesign.yaml`（135 paths / 184 ops，1169 处修复后校验全绿）。
+- **#10 spec 下载健壮化：curl 回退** —— 信号：本机 127.0.0.1 转发代理下 urllib TLS 握手被掐
+  （SSL UNEXPECTED_EOF）；且 Windows CreateProcess 先搜 System32 后搜 PATH，裸调 "curl" 会
+  命中打不通同一代理的 System32 构建。
+  改动：`spec_import._fetch_url`——urllib 失败时经 `shutil.which` 按 PATH 解析 curl 完整路径
+  回退（`-sSL --retry 3 --retry-all-errors`），两者都失败才报错。
