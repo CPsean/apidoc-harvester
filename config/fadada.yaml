@@ -23,6 +23,10 @@ acquire:
     content_is: html               # html | markdown  (format of the pointed value)
 
   # FALLBACK 1: pre-downloaded static HTML files (what we have for fadada now).
+  # NOTE: the HTML pages are third-party content and are NOT distributed with
+  # this repo — download the doc pages yourself into `html_root` (one file per
+  # page, matching each page's `file` below) before running this config. For
+  # runnable-out-of-the-box examples see config/adobesign.yaml (spec_import).
   static_html:
     enabled: true
     html_root: ".."                # relative to the harvester project root
