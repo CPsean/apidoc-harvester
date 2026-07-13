@@ -14,8 +14,9 @@
 |---|---|---|
 | 0 | **`spec_import`** | 官方已发布 OpenAPI/Swagger spec（url/file）—— spec 即 source of truth，最优。下载 →（Swagger 2.0 经 `npx swagger2openapi` 转 3.0）→（可选 `normalize: true` 机械修复马虎厂商 spec：补缺失 description、映射 int/float/double/date 类型别名、清洗非法组件名并重写 $ref、info 非标准键挪 x-）→ 校验（全量分桶报错）→ 输出，源 spec 自带的悬空 $ref 作为 warn 忠实暴露。**接新 API 前先查有没有公开 spec。** |
 | 1 | `content_api` | 文档内容接口（JSON/HTML/Markdown）。一次性找到接口后整条流水线纯 HTTP，无浏览器、无模型。支持鉴权/XHR `headers` 与多 id URL 模板。 |
-| 2 | `static_html` | 已下载的静态 HTML，或直接 HTTP 取整页 HTML（SSR/静态站如 Docusaurus）。 |
-| 3 | `rendered` | 无头渲染（Playwright），仅当内容确由 JS 计算且无可取数据源时兜底。 |
+| 2 | `js_bundle` | SPA bundle 静态提取。显式配置 bundle URL 与字段/正则，只解析文本，不执行 JS。适合正文被打包进 webpack 且无 content API 的站点。 |
+| 3 | `static_html` | 已下载的静态 HTML，或直接 HTTP 取整页 HTML（SSR/静态站如 Docusaurus）。 |
+| 4 | `rendered` | 无头渲染（Playwright），仅当内容确由 JS 计算且无可取数据源时兜底。 |
 
 ## 快速开始
 
@@ -58,7 +59,9 @@ fetch ──→ convert ──→ extract ──→ build_openapi ──→ chec
 ```
 
 - `spec_import.py` — 直接导入已发布 spec（含 2.0→3.0 转换）；`run.py` 见 config 含 `spec_source` 即走此路
-- `fetch.py` — 多策略获取原文（content_api 支持自定义 headers + 多 id 模板）
+- `fetch.py` — 多策略获取原文（content_api 支持自定义 headers + 多 id 模板；js_bundle 支持静态 bundle 提取）
+- `config_loader.py` — 展开 `pages_from_manifest` / `pages_from_dir`，显式 pages 覆盖同 id 生成页
+- `preprocess.py` — 可选 HTML 预处理；第一版支持 parentid/toggle/colspan 树表规范化
 - `convert.py` — HTML → 规范 Markdown（保留代码缩进、表格嵌套、单元格内链接/加粗/`<br>`，剥离"复制代码"噪声）
 - `extract.py` — 正文 → 结构化接口模型（路径/方法/请求树/响应树）
 - `build_openapi.py` — 模型 → OpenAPI 3.1（类型/必填/嵌套/统一响应包装/鉴权头）+ 校验

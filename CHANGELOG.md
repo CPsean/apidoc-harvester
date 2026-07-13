@@ -38,3 +38,43 @@
   命中打不通同一代理的 System32 构建。
   改动：`spec_import._fetch_url`——urllib 失败时经 `shutil.which` 按 PATH 解析 curl 完整路径
   回退（`-sSL --retry 3 --retry-all-errors`），两者都失败才报错。
+- **#11 `+` 前缀嵌套（config 化）** —— 信号：法大大 markdown 表用 `+field` 表示子级，
+  `indent_depth` 的 `lstrip("+")` 把嵌套拍平到根层（使用者反馈 BUG-2）。
+  改动：新增 config `structure.nest_prefix`（如 `"+"`）——每个前导前缀字符计一级嵌套并从
+  字段名消费；未设置时行为逐字节不变。`common.indent_depth` 加参，`extract`/`convert`/
+  `pipeline` 全链透传（md 渲染与 OpenAPI 树深度保持一致）。
+- **#12 小节标题正则匹配（config 化）** —— 信号：Docusaurus 站标题渲染为 `2. 输入参数`
+  （带编号前缀），`startswith` 匹配失败、参数表全跳过（使用者反馈 BUG-3；直接全局改
+  `in` 会误伤，故做成 opt-in）。
+  改动：新增 config `structure.section_match: exact|regex`（默认 exact = 现行行为）——
+  regex 模式下 `*_section` 各标记按 `re.search` 匹配。`common._marker_match` 统一
+  `section_tables`/`code_after` 的判定。
+- **#13 required 列可选** —— 信号：腾讯云响应表只有 3 列（无"必选"列），
+  `cols["required"]` KeyError、行跳过条件硬编码 `cols["desc"]`（使用者反馈 BUG-4；
+  拒绝按列数自动猜列序——猜错产出静默错误的 spec）。
+  改动：`extract._tree_from_table`——`columns.required` 可省略（全部字段 required=False），
+  行跳过条件改用 `max(cols.values())`（对标准 4 列布局等价）。
+- **#14 OpenAPI path 参数未声明** —— 信号：校验器报 `Path parameter ... was not resolved`。
+  改动：`build_openapi.build` 从 path 模板提取 `{param}`，把请求表同名字段转为
+  `parameters[].in=path`，并从 requestBody 中剔除。
+- **#15 Markdown 顶部标题重复** —— 信号：`selectors.title` 命中 body 内首个同名 `<h1>`，
+  输出出现两个相同一级标题。
+  改动：`convert._walk` 透传首个 H1 跳过状态，只跳过第一个与页标题完全相同的 `<h1>`。
+- **#16 行号表格代码块污染** —— 信号：`<pre><table>` 行号结构输出为 `1{2...` 或残留空白。
+  改动：`common.code_text` 统一清洗 `td.ln-text` / 第一列数字行号表格，`convert._pre`
+  与 `common.code_after` 共用，避免 Markdown 与 examples 分叉。
+- **#17 path_regex 捕获完整 URL** —— 信号：文档写 `https://{host}/path`，OpenAPI 只需要
+  `/path`，配置正则被迫复杂化。
+  改动：`extract.extract_endpoint` 支持 `structure.strip_domain: true`，捕获完整 URL 后
+  只发出 path 部分。
+- **#18 大站点 pages 手写成本高** —— 信号：百页级文档需要手写 pages 列表。
+  改动：新增 `config_loader.load_config`，支持 `pages_from_manifest` 与 `pages_from_dir`，
+  生成页先展开，显式 `pages` 覆盖同 id。
+- **#19 parentid/colspan 树表无法直接抽取** —— 信号：站点用 `parentid`、`onclick=toggle(...)`
+  和 `colspan` 表达字段层级，标准列序抽取失败。
+  改动：新增 opt-in `preprocess.table_normalizer`，在 convert/extract 前把该类 HTML 表规整为
+  现有缩进规则可读取的表格。
+- **#20 SPA bundle 内嵌正文但无 content API** —— 信号：正文在 JS bundle 中，rendered 策略
+  成本高且环境依赖重。
+  改动：`fetch` 新增 opt-in `js_bundle` 策略，按显式 `record_regex` 或
+  `object_regex` + 字段名静态提取正文，不执行 JS。

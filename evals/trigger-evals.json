@@ -1,0 +1,17 @@
+{
+  "skill_name": "apidoc-harvester",
+  "evals": [
+    {"query": "pull these API doc pages into markdown for me", "should_trigger": true},
+    {"query": "turn this API documentation into an OpenAPI spec", "should_trigger": true},
+    {"query": "grab the docs for the Stripe payments API and save them locally", "should_trigger": true},
+    {"query": "this doc site is a SPA and plain fetch just returns an empty shell, can you extract the real content?", "should_trigger": true},
+    {"query": "reverse-engineer a swagger file from these reference pages", "should_trigger": true},
+    {"query": "keep our local copy of the 法大大 API docs in sync", "should_trigger": true},
+    {"query": "build a repeatable pipeline to mirror several API doc sites", "should_trigger": true},
+    {"query": "add a site config to my existing apidoc-harvester project", "should_trigger": true},
+    {"query": "scrape product prices off this e-commerce homepage", "should_trigger": false},
+    {"query": "the API already ships an openapi.json, just download and validate it", "should_trigger": false},
+    {"query": "write me a blog post about REST API design best practices", "should_trigger": false},
+    {"query": "summarize this single news article for me", "should_trigger": false}
+  ]
+}

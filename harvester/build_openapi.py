@@ -92,8 +92,29 @@ def build(models, oa_cfg):
             "operationId": _op_id(m["path"], method, used),
             "description": m.get("summary", ""),
         }
-        if m.get("request"):
-            req_schema = _object_from(m["request"])
+        path_param_names = set(re.findall(r"\{([^}/]+)\}", m["path"]))
+        path_params, body_fields = [], []
+        for field in m.get("request") or []:
+            if field.get("name") in path_param_names:
+                path_params.append(field)
+            else:
+                body_fields.append(field)
+        if path_param_names:
+            found = {p.get("name") for p in path_params}
+            for name in sorted(path_param_names - found):
+                path_params.append({"name": name, "type": "string", "desc": "", "children": []})
+            op["parameters"] = [
+                {
+                    "name": p["name"],
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": _scalar(p.get("type", ""))},
+                    "description": p.get("desc", ""),
+                }
+                for p in path_params
+            ]
+        if body_fields:
+            req_schema = _object_from(body_fields)
             content = {"schema": req_schema}
             if m.get("example_request") is not None:
                 content["example"] = m["example_request"]

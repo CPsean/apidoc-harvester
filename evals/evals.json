@@ -1,0 +1,54 @@
+{
+  "skill_name": "apidoc-harvester",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Here is a folder of pre-downloaded HTML pages for an API. Harvest them into clean Markdown and an OpenAPI 3.1 spec.",
+      "expected_output": "The skill locates or bootstraps the engine, writes a static_html site config, runs the pipeline, and produces out/<site>/{markdown/, models.json, openapi.yaml, checks-report.json} with the validator passing.",
+      "assertions": [
+        "A site config is created from config/_template.yaml rather than editing engine scripts directly",
+        "openapi.yaml passes openapi-spec-validator (checks-report.json ok is true)",
+        "Engine/config edits are shown as a diff and confirmed before applying"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "This API doc site is JavaScript-rendered; plain fetch returns an empty shell. Extract the real content.",
+      "expected_output": "The skill prefers discovering a content_api endpoint (one-time, via the Network tab procedure in the runbook) and falls back to static_html or rendered only when necessary, then runs the pipeline to produce Markdown + OpenAPI.",
+      "assertions": [
+        "The skill tries content_api before resorting to a headless browser",
+        "The chosen acquisition strategy is recorded in the site config",
+        "It does not drive a browser to read every page with the model"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The checks-report.json shows ok=false with some failures. Fix the pipeline so output is green.",
+      "expected_output": "The skill reads the loop runbook, classifies each failure with the signal->fix table, proposes the minimal change to a script or config, shows the diff, gets approval, applies, and re-runs until green.",
+      "assertions": [
+        "Each failure is classified before any edit",
+        "The proposed fix is minimal and targeted (config first, script only if needed)",
+        "Diffs are shown and approved before applying",
+        "After convergence, verified Markdown is frozen into golden/<site>/ and a CHANGELOG line is appended"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Generate the OpenAPI but also figure out the enum values for the status fields from the prose.",
+      "expected_output": "The baseline OpenAPI is produced deterministically (enums kept in description, not auto-guessed), and enum refinement is offered as an optional model-assisted follow-up rather than silently inferred.",
+      "assertions": [
+        "Enums are not auto-guessed from prose in the baseline spec",
+        "Enum refinement is offered explicitly as an optional pass"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The docs have a field typo and an example that disagrees with the parameter table. Just harvest them.",
+      "expected_output": "The skill harvests faithfully, preserving documentation inconsistencies rather than silently 'fixing' them, and surfaces the inconsistencies to the user at delivery.",
+      "assertions": [
+        "Documentation inconsistencies are preserved, not silently corrected",
+        "The inconsistencies are reported to the user at handoff"
+      ]
+    }
+  ]
+}

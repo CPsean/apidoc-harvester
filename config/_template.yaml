@@ -7,7 +7,7 @@ base_url: https://docs.example.com
 
 # ── Acquisition: cheapest strategy that works wins (tried in `order`) ─────────
 acquire:
-  order: [content_api, static_html, rendered]
+  order: [content_api, js_bundle, static_html, rendered]
   # BEST: a direct content endpoint. Discover ONCE via browser Network tab
   # (see runbook/LOOP.md). Then the whole pipeline is plain HTTP — no browser.
   content_api:
@@ -25,10 +25,32 @@ acquire:
   static_html:                      # FALLBACK 1: pre-downloaded HTML files
     enabled: false
     html_root: ".."                 # relative to the project root
+  js_bundle:                        # FALLBACK: static extraction from downloaded SPA bundles
+    enabled: false                  # no JS execution; requires explicit extraction rules
+    bundle_urls: []                 # url or local file, relative to project root
+    # record_regex must expose named groups: id, content; title is optional
+    record_regex: ""
+    # Alternative: object_regex + field names below
+    object_regex: ""
+    id_field: id
+    title_field: title
+    content_field: html
+    page_id_field: doc_id           # page key to match; falls back to doc_id then id
+    content_is: html                # html | markdown
   rendered:                         # FALLBACK 2: headless render (needs playwright)
     enabled: false
     url_template: "https://docs.example.com/doc/{doc_id}"
     wait_selector: ".article-body"
+
+# ── Optional HTML preprocessing before convert/extract ──────────────────────
+preprocess:
+  table_normalizer:
+    enabled: false                  # opt-in; normalizes colspan/parentid tree tables
+    indent_unit: 4
+    toggle_attr: onclick
+    parentid_attr: parentid
+    id_attr: id
+    skip_patterns: []
 
 # ── Where title / time / body live in a page's HTML ──────────────────────────
 selectors:
@@ -39,6 +61,8 @@ selectors:
 # ── How an API page lays out path / method / param tables ────────────────────
 structure:
   path_regex: '(?:请求地址|Endpoint|Path)[:：]\s*([^\s<）)]+)'
+  # strip_domain: true              # opt-in: if path_regex captures a full URL,
+                                    #   emit only its path for OpenAPI
   method_regex: '(?:请求方式|Method)[:：]\s*(GET|POST|PUT|DELETE|PATCH)'
   request_section:  ["请求参数", "Request Parameters", "Parameters"]
   response_section: ["响应结果", "响应参数", "Response", "Returns"]
@@ -46,9 +70,23 @@ structure:
   example_response_section: ["响应示例", "Response Example"]
   required_true_values: ["是", "Y", "true", "Required", "必填"]
   columns: {name: 0, type: 1, required: 2, desc: 3}
+  #                                 # `required` may be omitted (3-column docs, e.g.
+  #                                 #   {name: 0, type: 1, desc: 2}): all fields are
+  #                                 #   then emitted as optional
   nested_indent_unit: 4
+  # nest_prefix: "+"                # optional: each leading '+' on a field name = one
+  #                                 #   nesting level (some sites mark children this
+  #                                 #   way instead of indenting). Unset = indent-only.
+  # section_match: exact            # exact (default: == / startswith) | regex — with
+  #                                 #   regex every *_section marker is an re.search
+  #                                 #   pattern, e.g. '^\d+[.、]?\s*请求参数'
 
 # ── Pages to harvest (static_html needs `file`; api strategies need `doc_id`) ─
+# Optional generated page lists. Explicit `pages` below override generated ids.
+# pages_from_manifest: "html/docs/_manifest.json"
+# pages_from_dir:
+#   path: "html/docs"
+#   title_selector: "h1"
 pages:
   - {id: "01", title: "Overview", doc_id: "OVERVIEW_ID", api: false}
   - {id: "02", title: "Create thing", doc_id: "DOC_ID_1"}

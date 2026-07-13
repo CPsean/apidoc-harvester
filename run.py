@@ -4,10 +4,8 @@ import sys
 import os
 import json
 
-import yaml
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harvester import pipeline  # noqa: E402
+from harvester import config_loader, pipeline  # noqa: E402
 
 
 def main():
@@ -15,7 +13,7 @@ def main():
         print("usage: python run.py <config.yaml>")
         sys.exit(2)
     config_path = sys.argv[1]
-    cfg = yaml.safe_load(open(config_path, encoding="utf-8"))
+    cfg = config_loader.load_config(config_path)
     # Top of the acquisition ladder: if the config points at an already-published
     # spec, ingest it directly instead of scraping pages.
     if "spec_source" in cfg:

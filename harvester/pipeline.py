@@ -1,13 +1,13 @@
 """Orchestrator: fetch -> convert -> extract -> build_openapi -> checks for one config."""
 import os
 import json
-import yaml
 
-from . import fetch, convert, extract, build_openapi, checks, common
+from . import fetch, convert, extract, build_openapi, checks, common, config_loader
+from . import preprocess
 
 
 def _root_of(config_path):
-    return os.path.dirname(os.path.dirname(os.path.abspath(config_path)))
+    return config_loader.root_of(config_path)
 
 
 def _write(path, text):
@@ -17,11 +17,12 @@ def _write(path, text):
 
 
 def run(config_path):
-    cfg = yaml.safe_load(open(config_path, encoding="utf-8"))
+    cfg = config_loader.load_config(config_path)
     root = _root_of(config_path)
     out = cfg["output"]
     md_dir = os.path.join(root, out["markdown_dir"])
     unit = cfg["structure"].get("nested_indent_unit", 4)
+    nest_prefix = cfg["structure"].get("nest_prefix")
 
     models, page_errors, page_warns = [], [], []
     for page in cfg["pages"]:
@@ -35,11 +36,13 @@ def run(config_path):
             md = raw["content"].rstrip() + "\n"
             _write(os.path.join(md_dir, f"{page['id']}_{page['title']}.md"), md)
             continue
-        body, title, time = common.parse_page(raw["content"], cfg["selectors"])
+        html = preprocess.apply(raw["content"], cfg.get("preprocess", {}))
+        body, title, time = common.parse_page(html, cfg["selectors"])
         if body is None:
             page_errors.append(f"{page['id']} {page.get('title','')}: 未找到正文（检查 selectors.body）")
             continue
-        md = convert.to_markdown(body, title or page["title"], time, page.get("url", ""), unit)
+        md = convert.to_markdown(body, title or page["title"], time, page.get("url", ""),
+                                 unit, nest_prefix)
         _write(os.path.join(md_dir, f"{page['id']}_{page['title']}.md"), md)
         if page.get("api", True):
             models.append(extract.extract_endpoint(body, page, cfg["structure"]))

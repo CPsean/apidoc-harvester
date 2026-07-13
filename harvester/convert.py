@@ -55,12 +55,12 @@ def _cell(td):
     return raw.replace("|", "\\|")
 
 
-def _first_cell(td, unit):
-    depth, name = common.indent_depth(td.get_text(), unit)
+def _first_cell(td, unit, nest_prefix=None):
+    depth, name = common.indent_depth(td.get_text(), unit, nest_prefix)
     return common.FW * depth + name.replace("|", "\\|")
 
 
-def _table(tb, unit):
+def _table(tb, unit, nest_prefix=None):
     matrix = []
     for tr in tb.find_all("tr"):
         tds = tr.find_all(["td", "th"])
@@ -69,7 +69,7 @@ def _table(tb, unit):
         row = []
         for i, td in enumerate(tds):
             if i == 0 and td.name != "th":
-                row.append(_first_cell(td, unit))
+                row.append(_first_cell(td, unit, nest_prefix))
             else:
                 row.append(td.get_text().strip().replace("|", "\\|") if td.name == "th" else _cell(td))
         matrix.append(row)
@@ -85,15 +85,11 @@ def _table(tb, unit):
 
 
 def _pre(node):
-    txt = node.get_text().replace("\r\n", "\n")
-    for marker in CODE_NOISE:
-        i = txt.find("\n" + marker)
-        if i >= 0:
-            txt = txt[:i]
+    txt = common.code_text(node)
     return "```\n" + txt.rstrip("\n") + "\n```"
 
 
-def _walk(node, unit):
+def _walk(node, unit, nest_prefix=None, skip_first_h1=None):
     parts = []
     for c in node.children:
         if isinstance(c, str):
@@ -102,7 +98,16 @@ def _walk(node, unit):
             continue
         n = c.name
         if n in ("h1", "h2", "h3", "h4", "h5", "h6"):
-            parts.append("#" * int(n[1]) + " " + c.get_text().strip())
+            text = c.get_text().strip()
+            if (
+                n == "h1"
+                and skip_first_h1
+                and not skip_first_h1["done"]
+                and text == skip_first_h1["title"]
+            ):
+                skip_first_h1["done"] = True
+                continue
+            parts.append("#" * int(n[1]) + " " + text)
         elif n == "p":
             t = _para(c)
             if t:
@@ -117,19 +122,19 @@ def _walk(node, unit):
                 idx += 1
             parts.append("\n".join(items))
         elif n == "table":
-            parts.append(_table(c, unit))
+            parts.append(_table(c, unit, nest_prefix))
         elif n == "img":
             parts.append("![%s](%s)" % (c.get("alt", ""), c.get("src", "")))
         elif n == "blockquote":
             parts.append("\n".join("> " + l for l in _para(c).split("\n")))
         else:
-            sub = _walk(c, unit)
+            sub = _walk(c, unit, nest_prefix, skip_first_h1)
             if sub.strip():
                 parts.append(sub)
     return "\n\n".join(p for p in parts if p.strip())
 
 
-def to_markdown(body, title, time, source_url, unit=4):
+def to_markdown(body, title, time, source_url, unit=4, nest_prefix=None):
     head = "# " + title + "\n\n"
     meta = []
     if time:
@@ -137,5 +142,6 @@ def to_markdown(body, title, time, source_url, unit=4):
     if source_url:
         meta.append("> 来源：" + source_url)
     head += ("  \n".join(meta) + "\n\n") if meta else ""
-    md = head + _walk(body, unit)
+    skip = {"title": title.strip(), "done": False}
+    md = head + _walk(body, unit, nest_prefix, skip)
     return re.sub(r"\n{3,}", "\n\n", md).strip() + "\n"

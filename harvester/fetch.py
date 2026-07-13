@@ -2,6 +2,9 @@
 strategy that works. Returns a dict: {format: 'html'|'markdown', content: str}."""
 import os
 import json
+import re
+import ast
+import hashlib
 import urllib.request
 
 
@@ -67,7 +70,105 @@ def _rendered(page, cfg, _root):
     return {"format": "html", "content": html}
 
 
-STRATEGIES = {"content_api": _content_api, "static_html": _static_html, "rendered": _rendered}
+_JS_INDEX_CACHE = {}
+
+
+def _read_bundle(source, root, js_cfg, site):
+    if source.startswith(("http://", "https://")):
+        cache_dir = js_cfg.get("cache_dir")
+        if cache_dir is None:
+            cache_dir = os.path.join("out", site, "_bundle_cache")
+        cache_path = os.path.join(root, cache_dir, hashlib.sha1(source.encode("utf-8")).hexdigest() + ".js")
+        if os.path.exists(cache_path):
+            with open(cache_path, encoding="utf-8") as f:
+                return f.read()
+        with urllib.request.urlopen(source, timeout=30) as r:
+            text = r.read().decode("utf-8", "replace")
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return text
+    path = source if os.path.isabs(source) else os.path.join(root, source)
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _decode_js_string(quote, value):
+    try:
+        return ast.literal_eval(quote + value + quote)
+    except Exception:
+        return value.replace(r"\/", "/").replace(r"\n", "\n").replace(r"\"", '"').replace(r"\'", "'")
+
+
+def _field(obj, name):
+    key = re.escape(name)
+    pattern = r'(?:["\']%s["\']|%s)\s*:\s*(["\'])(?P<value>(?:\\.|(?!\1).)*)\1' % (key, key)
+    m = re.search(pattern, obj, re.S)
+    return _decode_js_string(m.group(1), m.group("value")) if m else None
+
+
+def _records_from_bundle(text, js_cfg):
+    id_field = js_cfg.get("id_field", "id")
+    title_field = js_cfg.get("title_field", "title")
+    content_field = js_cfg.get("content_field", "content")
+    records = {}
+    if js_cfg.get("record_regex"):
+        for m in re.finditer(js_cfg["record_regex"], text, re.S):
+            data = m.groupdict()
+            pid = data.get("id")
+            content = data.get("content")
+            if pid and content is not None:
+                records[str(pid)] = {
+                    "title": data.get("title") or str(pid),
+                    "content": content,
+                }
+        return records
+
+    object_regex = js_cfg.get("object_regex")
+    if not object_regex:
+        raise ValueError("js_bundle needs record_regex or object_regex")
+    for m in re.finditer(object_regex, text, re.S):
+        obj = m.group(0)
+        pid = _field(obj, id_field)
+        content = _field(obj, content_field)
+        if pid and content is not None:
+            records[str(pid)] = {
+                "title": _field(obj, title_field) or str(pid),
+                "content": content,
+            }
+    return records
+
+
+def _js_bundle_index(cfg, root):
+    js_cfg = cfg["acquire"]["js_bundle"]
+    key = json.dumps(js_cfg, sort_keys=True, ensure_ascii=False) + "|" + root
+    if key in _JS_INDEX_CACHE:
+        return _JS_INDEX_CACHE[key]
+    index = {}
+    for source in js_cfg.get("bundle_urls", []):
+        text = _read_bundle(source, root, js_cfg, cfg.get("site", "site"))
+        index.update(_records_from_bundle(text, js_cfg))
+    _JS_INDEX_CACHE[key] = index
+    return index
+
+
+def _js_bundle(page, cfg, root):
+    js_cfg = cfg["acquire"]["js_bundle"]
+    if not js_cfg.get("enabled"):
+        return None
+    page_id = str(page.get(js_cfg.get("page_id_field", "doc_id")) or page.get("doc_id") or page.get("id"))
+    record = _js_bundle_index(cfg, root).get(page_id)
+    if not record:
+        return None
+    return {"format": js_cfg.get("content_is", "html"), "content": record["content"]}
+
+
+STRATEGIES = {
+    "content_api": _content_api,
+    "js_bundle": _js_bundle,
+    "static_html": _static_html,
+    "rendered": _rendered,
+}
 
 
 def acquire(page, cfg, root):
