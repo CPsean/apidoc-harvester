@@ -1,12 +1,45 @@
 """Shared DOM / table helpers used by both convert (markdown) and extract (model).
 Single source of truth for table-cell nesting depth, so md and OpenAPI agree."""
 import re
+import shutil
+import subprocess
+import urllib.request
+
 import bs4
 
 NBSP = " "        # &nbsp; — nesting indent in raw HTML cells
 FW   = "　"        # full-width space — nesting indent in normalized markdown
 ARROWS = "▶▼►▸"        # expand/collapse glyphs to strip from tree-cell names
 CODE_NOISE = ("复制代码", "Copy", "复制")
+
+
+def fetch_url(url, headers=None, timeout=120, method="GET") -> str:
+    """Fetch text with urllib first, then curl as a proxy/TLS fallback."""
+    headers = dict(headers or {})
+    try:
+        req = urllib.request.Request(url, method=method, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read().decode("utf-8", "replace")
+    except Exception as urllib_err:  # noqa: BLE001
+        # Some local proxies break urllib's CONNECT/TLS while curl gets through.
+        # Resolve curl via PATH so Windows does not silently prefer System32 curl.
+        curl = shutil.which("curl")
+        if not curl:
+            raise
+        cmd = [curl, "-sSL", "--max-time", str(max(timeout, 30)),
+               "--retry", "3", "--retry-all-errors"]
+        for key, value in headers.items():
+            cmd.extend(["-H", f"{key}: {value}"])
+        if method and method.upper() != "GET":
+            cmd.extend(["-X", method.upper()])
+        cmd.append(url)
+        proc = subprocess.run(cmd, capture_output=True, timeout=max(timeout * 5, 60))
+        if proc.returncode != 0 or not proc.stdout:
+            raise RuntimeError(
+                f"urllib failed ({urllib_err}); curl fallback failed "
+                f"(rc={proc.returncode}): {proc.stderr.decode('utf-8', 'replace')[:200]}"
+            ) from urllib_err
+        return proc.stdout.decode("utf-8", "replace")
 
 
 def soup(html: str) -> bs4.BeautifulSoup:

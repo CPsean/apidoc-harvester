@@ -51,6 +51,14 @@ remain versioned, reviewable, and reversible.
 **Hard rules:**
 - Prefer editing the source repository under `repos/apidoc-harvester/`, then copy or
   install it explicitly into the target agent environment.
+- When a target workspace already has a copied engine, refresh only engine-owned system
+  files from the current skill before running: `run.py`, `harvester/`, `runbook/`,
+  `references/`, `requirements.txt`, and `config/_template.yaml`. Preserve user-owned
+  files such as `config/<site>.yaml`, `out/`, `golden/`, downloaded HTML, and raw source
+  material unless the user explicitly asks for migration or cleanup.
+- Use `harvester.__version__` as the engine version source. `python run.py --version`
+  must report the version that will execute, so copied engines do not silently drift
+  behind the updated skill.
 - **Before changing any engine script (`harvester/*.py`) or a site config, show the
   user a diff and get an explicit OK.** These are the user's long-lived code; treat
   edits as proposals, not faits accomplis. Per-run config authoring for a brand-new
@@ -63,6 +71,8 @@ Look for an `apidoc-harvester/` project in the user's connected working folder
 (in this workspace, `repos/apidoc-harvester/`). Install deps:
 `pip install -r requirements.txt --break-system-packages`
 (Needs: beautifulsoup4, PyYAML, openapi-spec-validator; playwright only for `rendered`.)
+If running from a copied engine, refresh the engine-owned system files from the current
+skill first, then confirm the executing version with `python run.py --version`.
 
 ### 2. Configure the target site
 Copy `config/_template.yaml` → `config/<site>.yaml` and fill it in. `config/fadada.yaml`
@@ -72,8 +82,10 @@ available, use `js_bundle` for static bundle-embedded docs, `static_html` (point
 downloaded HTML), or enable `rendered`.
 
 ### 3. Run
-`python run.py config/<site>.yaml` → writes `out/<site>/{markdown/, models.json,
-openapi.yaml, checks-report.json}`.
+`python run.py config/<site>.yaml` writes outputs under `out/<site>/`. Page-harvesting
+configs write `markdown/`, `models.json`, `openapi.yaml`, and `checks-report.json`.
+Spec-mode configs (`spec_source`) ingest an already-published spec and write
+`openapi.yaml` plus `checks-report.json`.
 
 ### 4. Evaluate and iterate (the loop)
 Read `out/<site>/checks-report.json`. If `ok` is false, classify each failure with the
@@ -83,14 +95,17 @@ Repeat until green and stable. Read the loop runbook before your first fix — i
 the classification and the one-time content-api discovery.
 
 ### 5. Converge and record
-When output is green and stable, freeze the verified Markdown into `golden/<site>/`
-(snapshot regression guard) and append one line to `CHANGELOG.md` describing the
-signal→fix. This is the loop's memory; future improvements append here.
+When page-harvesting output is green and stable, freeze the verified Markdown into
+`golden/<site>/` (snapshot regression guard). For any engine behavior change, append
+one line to `CHANGELOG.md` describing the signal→fix. This is the loop's memory;
+future improvements append here.
 
 ### 6. Deliver
-Hand the user `out/<site>/openapi.yaml` (3.1, validator-passing), the Markdown set, and
-`models.json`. Note any documentation inconsistencies you preserved rather than silently
-"fixed" (e.g. field typos, examples that disagree with tables).
+For page-harvesting configs, hand the user `out/<site>/openapi.yaml` (validator-passing),
+the Markdown set, and `models.json`. For spec-mode configs, hand the user the validated
+`openapi.yaml` and `checks-report.json`; there is no Markdown/model extraction step.
+Note any documentation inconsistencies you preserved rather than silently "fixed" (e.g.
+field typos, examples that disagree with tables).
 
 ## What the generated OpenAPI does and doesn't do
 The builder maps types, required flags, nested objects, the response envelope, and

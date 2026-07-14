@@ -19,12 +19,12 @@ Config shape (a spec-mode config has `spec_source` instead of `pages`):
 import os
 import re
 import json
-import shutil
 import subprocess
 import tempfile
-import urllib.request
 
 import yaml
+
+from . import common
 
 HTTP_METHODS = {"get", "post", "put", "delete", "patch", "head", "options", "trace"}
 
@@ -64,37 +64,11 @@ def _root_of(config_path):
     return os.path.dirname(os.path.dirname(os.path.abspath(config_path)))
 
 
-def _fetch_url(url):
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "*/*"})
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return r.read().decode("utf-8", "replace")
-    except Exception as urllib_err:  # noqa: BLE001
-        # Some local proxies break urllib's CONNECT/TLS while curl gets through
-        # (observed: SSL UNEXPECTED_EOF behind a 127.0.0.1 forward proxy).
-        # Resolve curl via PATH: on Windows, subprocess with a bare "curl" finds
-        # System32's build before PATH (CreateProcess order), and that build can
-        # fail the same proxy handshake that the PATH one (e.g. Git's) survives.
-        curl = shutil.which("curl")
-        if not curl:
-            raise
-        proc = subprocess.run([curl, "-sSL", "--max-time", "180",
-                               "--retry", "3", "--retry-all-errors",
-                               "-A", "Mozilla/5.0", url],
-                              capture_output=True, timeout=900)
-        if proc.returncode != 0 or not proc.stdout:
-            raise RuntimeError(
-                f"urllib failed ({urllib_err}); curl fallback failed "
-                f"(rc={proc.returncode}): {proc.stderr.decode('utf-8', 'replace')[:200]}"
-            ) from urllib_err
-        return proc.stdout.decode("utf-8", "replace")
-
-
 def _load(spec_source, root):
     url = spec_source.get("url")
     fpath = spec_source.get("file")
     if url:
-        raw = _fetch_url(url)
+        raw = common.fetch_url(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "*/*"})
         src = url
     elif fpath:
         p = fpath if os.path.isabs(fpath) else os.path.join(root, fpath)
@@ -317,8 +291,36 @@ def _count_ops(paths):
                for m in item if m.lower() in HTTP_METHODS)
 
 
+def _validate_spec_config(cfg, config_path):
+    if not isinstance(cfg, dict):
+        raise ValueError(f"{config_path}: config must be a mapping")
+
+    missing = []
+    ss = cfg.get("spec_source")
+    if not isinstance(ss, dict):
+        missing.append("spec_source")
+    elif not (ss.get("url") or ss.get("file")):
+        missing.append("spec_source.url or spec_source.file")
+
+    out = cfg.get("output")
+    if not isinstance(out, dict):
+        missing.append("output")
+    else:
+        for key in ("openapi", "report"):
+            if not out.get(key):
+                missing.append(f"output.{key}")
+
+    if missing:
+        raise ValueError(
+            f"{config_path}: missing required spec_import config field(s): "
+            + ", ".join(missing)
+        )
+
+
 def run(config_path):
-    cfg = yaml.safe_load(open(config_path, encoding="utf-8"))
+    with open(config_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    _validate_spec_config(cfg, config_path)
     root = _root_of(config_path)
     ss = cfg["spec_source"]
     out = cfg["output"]

@@ -91,3 +91,12 @@
   无法准确抽取。
   改动：`preprocess.table_normalizer` 新增 opt-in `nesting_mode: data_level`，
   `extract._tree_from_table` 支持 `request_columns` / `response_columns` 覆盖。
+- **#24 复制引擎副本可能落后于已更新 skill** —— 信号：用户更新 Agent 侧 skill 后，
+  目标工作区中已复制的 engine 仍可能继续执行旧版本。
+  改动：复用 `harvester.__version__` 作为单一版本源，`run.py --version` 输出实际执行版本；
+  `SKILL.md` / `AGENTS.md` 明确复制副本只刷新 engine 系统文件，保留用户配置和产物。
+- **#25 spec_import 与页面采集路径的质量护栏不一致** —— 信号：`spec_import`
+  缺少 `output` 等必需字段时裸抛 `KeyError`，`content_api` / `js_bundle` 没有
+  #10 已验证的 urllib→curl 回退，且 SKILL.md 对 spec-mode 误承诺 Markdown/models 产物。
+  改动：`spec_import` 增加必需字段校验，`common.fetch_url` 统一 URL 获取与 curl 回退，
+  `fetch.py` / `spec_import.py` 共用该逻辑；`SKILL.md` 区分 spec-mode 与页面采集交付物。

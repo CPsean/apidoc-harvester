@@ -5,13 +5,17 @@ import os
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harvester import config_loader, pipeline  # noqa: E402
+from harvester import __version__, config_loader, pipeline  # noqa: E402
 
 
 def main():
     if len(sys.argv) < 2:
         print("usage: python run.py <config.yaml>")
+        print("       python run.py --version")
         sys.exit(2)
+    if sys.argv[1] in ("--version", "-V"):
+        print(f"apidoc-harvester {__version__}")
+        sys.exit(0)
     config_path = sys.argv[1]
     cfg = config_loader.load_config(config_path)
     # Top of the acquisition ladder: if the config points at an already-published

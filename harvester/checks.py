@@ -1,7 +1,6 @@
 """The evaluator / oracle. Produces a machine-readable report the loop consumes.
 A 'fail' means the agent should patch a script or the config and re-run."""
 import os
-import re
 import difflib
 
 

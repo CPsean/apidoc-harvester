@@ -1,15 +1,73 @@
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import yaml
 from bs4 import BeautifulSoup
 
-from harvester import build_openapi, common, config_loader, convert, extract, fetch, pipeline, preprocess
+from harvester import __version__, build_openapi, common, config_loader, convert, extract, fetch, pipeline, preprocess, spec_import
 
 
 class AcceptancePlanTests(unittest.TestCase):
+    def test_run_py_reports_engine_version(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        result = subprocess.run(
+            [sys.executable, os.path.join(root, "run.py"), "--version"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.stdout.strip(), f"apidoc-harvester {__version__}")
+
+    def test_spec_import_missing_output_fails_with_config_hint(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "config"))
+            config_path = os.path.join(root, "config", "spec.yaml")
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump({"site": "spec", "spec_source": {"file": "openapi.yaml"}}, f)
+
+            with self.assertRaisesRegex(ValueError, "missing required spec_import config field"):
+                spec_import.run(config_path)
+
+    def test_content_api_uses_shared_fetch_url(self):
+        cfg = {
+            "acquire": {
+                "content_api": {
+                    "enabled": True,
+                    "url_template": "https://api.example.com/docs/{id}",
+                    "headers": {"X-Test": "1"},
+                    "content_pointer": "data.html",
+                    "content_is": "html",
+                }
+            }
+        }
+        with mock.patch("harvester.fetch.common.fetch_url", return_value='{"data": {"html": "<main>ok</main>"}}') as mocked:
+            raw = fetch.acquire({"id": "p1"}, cfg, ".")
+
+        self.assertEqual(raw["content"], "<main>ok</main>")
+        mocked.assert_called_once_with(
+            "https://api.example.com/docs/p1",
+            headers={"Accept": "application/json", "X-Test": "1"},
+            method="GET",
+            timeout=30,
+        )
+
+    def test_fetch_url_uses_curl_fallback(self):
+        completed = mock.Mock(returncode=0, stdout=b"ok", stderr=b"")
+        with mock.patch("harvester.common.urllib.request.urlopen", side_effect=OSError("tls")):
+            with mock.patch("harvester.common.shutil.which", return_value="curl"):
+                with mock.patch("harvester.common.subprocess.run", return_value=completed) as mocked:
+                    text = common.fetch_url("https://example.com/openapi.json", headers={"Accept": "*/*"})
+
+        self.assertEqual(text, "ok")
+        self.assertIn("curl", mocked.call_args.args[0][0])
+        self.assertIn("https://example.com/openapi.json", mocked.call_args.args[0])
+
     def test_path_params_are_emitted_and_removed_from_body(self):
         doc = build_openapi.build([
             {

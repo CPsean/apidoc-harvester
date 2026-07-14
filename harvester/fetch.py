@@ -5,7 +5,8 @@ import json
 import re
 import ast
 import hashlib
-import urllib.request
+
+from . import common
 
 
 def _get_pointer(obj, dotted):
@@ -29,9 +30,7 @@ def _content_api(page, cfg, _root):
     # (some gateways 403 without an XHR marker / version header).
     headers = {"Accept": "application/json"}
     headers.update(ca.get("headers") or {})
-    req = urllib.request.Request(url, method=ca.get("method", "GET"), headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        raw = r.read().decode("utf-8", "replace")
+    raw = common.fetch_url(url, headers=headers, method=ca.get("method", "GET"), timeout=30)
     fmt = ca.get("response_format", "json")
     if fmt == "json":
         data = json.loads(raw)
@@ -82,8 +81,7 @@ def _read_bundle(source, root, js_cfg, site):
         if os.path.exists(cache_path):
             with open(cache_path, encoding="utf-8") as f:
                 return f.read()
-        with urllib.request.urlopen(source, timeout=30) as r:
-            text = r.read().decode("utf-8", "replace")
+        text = common.fetch_url(source, timeout=30)
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(text)
