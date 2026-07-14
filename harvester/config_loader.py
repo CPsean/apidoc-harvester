@@ -6,6 +6,19 @@ import yaml
 
 from . import common
 
+LEGACY_FIELD_HINTS = {
+    "acquisition": "acquire",
+    "path_regex": "structure.path_regex",
+    "method_regex": "structure.method_regex",
+    "request_section": "structure.request_section",
+    "response_section": "structure.response_section",
+    "example_request_section": "structure.example_request_section",
+    "example_response_section": "structure.example_response_section",
+    "columns": "structure.columns",
+}
+
+REQUIRED_PIPELINE_SECTIONS = ("acquire", "selectors", "structure", "pages", "openapi", "output")
+
 
 def root_of(config_path):
     return os.path.dirname(os.path.dirname(os.path.abspath(config_path)))
@@ -148,9 +161,31 @@ def _merge_pages(generated, explicit):
     return [merged[pid] for pid in order]
 
 
+def _validate_current_shape(cfg, config_path):
+    legacy = [name for name in LEGACY_FIELD_HINTS if name in cfg]
+    if legacy:
+        hints = ", ".join(f"{name} -> {LEGACY_FIELD_HINTS[name]}" for name in legacy)
+        raise ValueError(
+            f"{config_path}: legacy config format detected ({hints}). "
+            "Update the config to the current nested schema in config/_template.yaml."
+        )
+
+
+def validate_pipeline_config(cfg, config_path="<config>"):
+    _validate_current_shape(cfg, config_path)
+    missing = [name for name in REQUIRED_PIPELINE_SECTIONS if name not in cfg]
+    if missing:
+        raise ValueError(
+            f"{config_path}: missing required config section(s): {', '.join(missing)}. "
+            "For page harvesting configs, fill acquire/selectors/structure/pages/openapi/output "
+            "as shown in config/_template.yaml. For spec imports, use spec_source."
+        )
+
+
 def load_config(config_path):
     with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
+    _validate_current_shape(cfg, config_path)
     if "spec_source" in cfg:
         return cfg
     root = root_of(config_path)

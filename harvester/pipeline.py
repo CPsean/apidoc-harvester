@@ -2,6 +2,8 @@
 import os
 import json
 
+import yaml
+
 from . import fetch, convert, extract, build_openapi, checks, common, config_loader
 from . import preprocess
 
@@ -18,6 +20,7 @@ def _write(path, text):
 
 def run(config_path):
     cfg = config_loader.load_config(config_path)
+    config_loader.validate_pipeline_config(cfg, config_path)
     root = _root_of(config_path)
     out = cfg["output"]
     md_dir = os.path.join(root, out["markdown_dir"])

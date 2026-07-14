@@ -78,6 +78,9 @@ article title, the "updated" timestamp, and the main content container.
 - `request_section` / `response_section`: the heading text that precedes the parameter
   and response tables (a list — include all variants the site uses).
 - `columns`: 0-based positions of name/type/required/desc columns in those tables.
+  If request and response tables use different layouts, set `request_columns` and/or
+  `response_columns`; either one falls back to `columns` when omitted. Omit
+  `required` for 3-column tables.
 - `required_true_values`: strings in the "required" column that mean true.
 - `nested_indent_unit`: how many leading nbsp / full-width spaces equal one nesting
   level for tree-structured response fields. Inspect a nested table to measure it.
@@ -90,10 +93,12 @@ For large sites, generate the list with `pages_from_manifest` (JSON manifest) or
 Generated pages are merged first; explicit `pages` override matching ids.
 
 ## preprocess
-`preprocess.table_normalizer.enabled: true` normalizes tree tables that use
-`parentid` / `onclick="toggle(...)"` / `colspan` wrappers before Markdown conversion
-and OpenAPI extraction. Keep it off unless a site's tables are structurally
-unreadable by the standard `columns` + `nested_indent_unit` rules.
+`preprocess.table_normalizer.enabled: true` normalizes tree tables before Markdown
+conversion and OpenAPI extraction. The default mode handles `parentid` /
+`onclick="toggle(...)"` / `colspan` wrappers. For VitePress-style tables that carry
+nesting in row attributes, set `nesting_mode: data_level` and optionally
+`level_attr: data-level`. Keep preprocessing off unless a site's tables are
+structurally unreadable by the standard `columns` + `nested_indent_unit` rules.
 
 ## openapi
 `title`, `version`, `servers` (use a `{host}` variable if the docs don't publish a fixed

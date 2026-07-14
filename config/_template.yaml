@@ -46,6 +46,8 @@ acquire:
 preprocess:
   table_normalizer:
     enabled: false                  # opt-in; normalizes colspan/parentid tree tables
+    # nesting_mode: parentid         # parentid (default) | data_level
+    # level_attr: data-level         # used when nesting_mode: data_level
     indent_unit: 4
     toggle_attr: onclick
     parentid_attr: parentid
@@ -73,6 +75,10 @@ structure:
   #                                 # `required` may be omitted (3-column docs, e.g.
   #                                 #   {name: 0, type: 1, desc: 2}): all fields are
   #                                 #   then emitted as optional
+  # request_columns:  {name: 0, type: 1, required: 2, desc: 3}
+  # response_columns: {name: 0, type: 1, desc: 2}
+  #                                 # Optional overrides when request/response tables
+  #                                 # use different column layouts.
   nested_indent_unit: 4
   # nest_prefix: "+"                # optional: each leading '+' on a field name = one
   #                                 #   nesting level (some sites mark children this

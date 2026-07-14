@@ -12,7 +12,8 @@ def _md_noise(md_dir):
     for fn in sorted(os.listdir(md_dir)):
         if not fn.endswith(".md"):
             continue
-        txt = open(os.path.join(md_dir, fn), encoding="utf-8").read()
+        with open(os.path.join(md_dir, fn), encoding="utf-8") as f:
+            txt = f.read()
         if "复制代码" in txt:
             issues.append(f"{fn}: 残留代码复制按钮噪声 '复制代码'")
         if "❨" in txt or "␤" in txt:
@@ -29,12 +30,14 @@ def _golden_diff(md_dir, golden_dir):
     for fn in sorted(os.listdir(golden_dir)):
         if not fn.endswith(".md"):
             continue
-        gold = open(os.path.join(golden_dir, fn), encoding="utf-8").read().splitlines()
+        with open(os.path.join(golden_dir, fn), encoding="utf-8") as f:
+            gold = f.read().splitlines()
         cur_path = os.path.join(md_dir, fn)
         if not os.path.exists(cur_path):
             issues.append(f"{fn}: 缺少对应输出（golden 存在）")
             continue
-        cur = open(cur_path, encoding="utf-8").read().splitlines()
+        with open(cur_path, encoding="utf-8") as f:
+            cur = f.read().splitlines()
         diff = [l for l in difflib.unified_diff(gold, cur, lineterm="") if l[:1] in "+-" and l[:2] not in ("++", "--")]
         if diff:
             issues.append(f"{fn}: 与 golden 不一致（{len(diff)} 行差异）")

@@ -84,9 +84,29 @@ def _table(tb, unit, nest_prefix=None):
     return "\n".join(lines)
 
 
-def _pre(node):
+def _classes(node):
+    classes = node.get("class", [])
+    return classes if isinstance(classes, list) else str(classes).split()
+
+
+def _code_language(node):
+    for cls in _classes(node):
+        if cls.startswith("language-"):
+            return cls.split("-", 1)[1]
+    parent = getattr(node, "parent", None)
+    if parent and getattr(parent, "name", None):
+        return _code_language(parent)
+    return ""
+
+
+def _is_language_label(node):
+    return node.name == "span" and "lang" in _classes(node)
+
+
+def _pre(node, lang=None):
     txt = common.code_text(node)
-    return "```\n" + txt.rstrip("\n") + "\n```"
+    info = lang if lang is not None else _code_language(node)
+    return "```" + info + "\n" + txt.rstrip("\n") + "\n```"
 
 
 def _walk(node, unit, nest_prefix=None, skip_first_h1=None):
@@ -114,6 +134,10 @@ def _walk(node, unit, nest_prefix=None, skip_first_h1=None):
                 parts.append(t)
         elif n == "pre":
             parts.append(_pre(c))
+        elif _is_language_label(c):
+            continue
+        elif _code_language(c) and c.find("pre"):
+            parts.append(_pre(c.find("pre"), _code_language(c)))
         elif n in ("ul", "ol"):
             items, idx = [], 1
             for li in c.find_all("li", recursive=False):

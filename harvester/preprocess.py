@@ -47,6 +47,9 @@ def _depth(row_id, parents, cache, visiting):
 
 
 def _table_signal(table, cfg):
+    if cfg.get("nesting_mode") == "data_level":
+        level_attr = cfg.get("level_attr", "data-level")
+        return table.find(attrs={level_attr: True}) is not None
     parentid_attr = cfg.get("parentid_attr", "parentid")
     if table.find(attrs={parentid_attr: True}):
         return True
@@ -71,18 +74,31 @@ def _expand_colspans(soup, tr):
     return expanded
 
 
+def _data_level_depth(tr, cfg):
+    value = _attr_value(tr, cfg.get("level_attr", "data-level"))
+    if value is None:
+        return 0
+    m = re.search(r"-?\d+", str(value))
+    return max(int(m.group(0)), 0) if m else 0
+
+
 def _normalize_table(soup, table, cfg):
     if not _table_signal(table, cfg) or _skip_table(table, cfg):
         return
     rows = table.find_all("tr")
-    row_ids = {tr: _row_id(tr, cfg) for tr in rows}
-    parents = {
-        row_id: parent_id
-        for tr, row_id in row_ids.items()
-        for parent_id in [_parent_id(tr, cfg)]
-        if row_id and parent_id
-    }
-    depths = {row_id: _depth(row_id, parents, {}, set()) for row_id in parents.keys()}
+    nesting_mode = cfg.get("nesting_mode", "parentid")
+    if nesting_mode == "data_level":
+        row_depths = {tr: _data_level_depth(tr, cfg) for tr in rows}
+    else:
+        row_ids = {tr: _row_id(tr, cfg) for tr in rows}
+        parents = {
+            row_id: parent_id
+            for tr, row_id in row_ids.items()
+            for parent_id in [_parent_id(tr, cfg)]
+            if row_id and parent_id
+        }
+        depths = {row_id: _depth(row_id, parents, {}, set()) for row_id in parents.keys()}
+        row_depths = {tr: depths.get(row_ids.get(tr), 0) for tr in rows}
 
     matrices = []
     for tr in rows:
@@ -97,8 +113,7 @@ def _normalize_table(soup, table, cfg):
         for _ in range(max_cols - len(cells)):
             tr.append(soup.new_tag("td"))
 
-        row_id = row_ids.get(tr)
-        depth = depths.get(row_id, 0)
+        depth = row_depths.get(tr, 0)
         if depth <= 0:
             continue
         first = tr.find(["td", "th"], recursive=False)

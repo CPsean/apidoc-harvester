@@ -14,10 +14,10 @@ def _summary(body):
     return ""
 
 
-def _tree_from_table(table, struct):
+def _tree_from_table(table, struct, columns_key="columns"):
     if table is None:
         return []
-    cols = struct["columns"]
+    cols = struct.get(columns_key) or struct["columns"]
     unit = struct.get("nested_indent_unit", 4)
     nest_prefix = struct.get("nest_prefix")
     truthy = set(struct.get("required_true_values", ["是"]))
@@ -76,8 +76,8 @@ def extract_endpoint(body, page, struct):
         "path": path,
         "method": (mm.group(1) if mm else None),
         "summary": _summary(body),
-        "request": _tree_from_table(req_tbl, struct),
-        "response": _tree_from_table(resp_tbl, struct),
+        "request": _tree_from_table(req_tbl, struct, "request_columns"),
+        "response": _tree_from_table(resp_tbl, struct, "response_columns"),
         "example_request": _example(body, struct.get("example_request_section", []), mode),
         "example_response": _example(body, struct.get("example_response_section", []), mode),
     }

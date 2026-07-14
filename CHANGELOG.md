@@ -78,3 +78,16 @@
   成本高且环境依赖重。
   改动：`fetch` 新增 opt-in `js_bundle` 策略，按显式 `record_regex` 或
   `object_regex` + 字段名静态提取正文，不执行 JS。
+- **#21 VitePress 代码块语言标签泄漏** —— 信号：`div.language-json` 中的 `span.lang`
+  输出为孤立段落，且代码围栏丢失语言标识。
+  改动：`convert._walk` 将语言包装层归一为单个带 info string 的代码围栏，
+  `convert._pre` 从 `language-*` class 继承语言。
+- **#22 旧配置/缺段落报错不清晰** —— 信号：旧版扁平配置或缺少 `output`
+  时只暴露 `KeyError`，使用者无法判断是配置格式迁移问题。
+  改动：`config_loader` 识别旧顶层字段并给出迁移提示，`pipeline.run` 在执行前
+  校验页面采集配置的必需段落。
+- **#23 现代文档站树表/混合列布局需要外部预处理** —— 信号：VitePress 表格用
+  `data-level` 表达层级，且同一页面请求表 4 列、响应表 3 列时全局 `columns`
+  无法准确抽取。
+  改动：`preprocess.table_normalizer` 新增 opt-in `nesting_mode: data_level`，
+  `extract._tree_from_table` 支持 `request_columns` / `response_columns` 覆盖。
