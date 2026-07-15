@@ -46,6 +46,23 @@ def fetch_url(url, headers=None, timeout=120, method="GET", data=None) -> str:
         return proc.stdout.decode("utf-8", "replace")
 
 
+_RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL",
+                   *(f"COM{i}" for i in range(1, 10)),
+                   *(f"LPT{i}" for i in range(1, 10))}
+
+
+def safe_filename(stem: str, max_len: int = 150) -> str:
+    """Filesystem-safe filename stem (extension appended by the caller).
+    Only the FILENAME is sanitized — page content keeps the original title, so
+    faithful-harvest is untouched. Handles Windows-illegal characters, control
+    chars/tabs, trailing dots/spaces, reserved device names, and length."""
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f\t]', "_", stem)
+    stem = stem.rstrip(". ")
+    if stem.split(".", 1)[0].upper() in _RESERVED_NAMES:
+        stem = "_" + stem
+    return stem[:max_len].rstrip(". ") or "_"
+
+
 def soup(html: str) -> bs4.BeautifulSoup:
     return bs4.BeautifulSoup(html, "html.parser")
 

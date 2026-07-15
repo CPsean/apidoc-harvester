@@ -18,6 +18,28 @@ def _write(path, text):
         f.write(text)
 
 
+def _maybe_repair_fences(md, filename, repair, warns):
+    """Opt-in (output.repair_fences): close an odd trailing code fence and record a
+    warn. Off by default — a broken source doc is surfaced as a checks fail, not
+    silently repaired."""
+    if repair and md.count("```") % 2 == 1:
+        warns.append(f"fence repaired: {filename}")
+        return md.rstrip("\n") + "\n```\n"
+    return md
+
+
+def _md_body(md_text):
+    """Markdown content -> BeautifulSoup body, so markdown-format acquisitions can
+    reuse the same extract_endpoint as HTML pages."""
+    try:
+        import markdown as _markdown
+    except ImportError:
+        raise RuntimeError(
+            "markdown 格式页面参与抽取需要 markdown 库: pip install 'markdown>=3.4'")
+    html = _markdown.markdown(md_text, extensions=["tables", "fenced_code"])
+    return common.soup(html)
+
+
 def run(config_path):
     cfg = config_loader.load_config(config_path)
     config_loader.validate_pipeline_config(cfg, config_path)
@@ -26,6 +48,7 @@ def run(config_path):
     md_dir = os.path.join(root, out["markdown_dir"])
     unit = cfg["structure"].get("nested_indent_unit", 4)
     nest_prefix = cfg["structure"].get("nest_prefix")
+    repair = out.get("repair_fences", False)
 
     models, page_errors, page_warns = [], [], []
     for page in cfg["pages"]:
@@ -35,9 +58,13 @@ def run(config_path):
             msg = f"{page['id']} {page.get('title','')}: fetch 失败 {e}"
             (page_errors if page.get("api", True) else page_warns).append(msg)
             continue
+        fn = common.safe_filename(f"{page['id']}_{page['title']}") + ".md"
         if raw["format"] == "markdown":
             md = raw["content"].rstrip() + "\n"
-            _write(os.path.join(md_dir, f"{page['id']}_{page['title']}.md"), md)
+            md = _maybe_repair_fences(md, fn, repair, page_warns)
+            _write(os.path.join(md_dir, fn), md)
+            if page.get("api", True):
+                models.append(extract.extract_endpoint(_md_body(md), page, cfg["structure"]))
             continue
         html = preprocess.apply(raw["content"], cfg.get("preprocess", {}))
         body, title, time = common.parse_page(html, cfg["selectors"])
@@ -46,7 +73,8 @@ def run(config_path):
             continue
         md = convert.to_markdown(body, title or page["title"], time, page.get("url", ""),
                                  unit, nest_prefix)
-        _write(os.path.join(md_dir, f"{page['id']}_{page['title']}.md"), md)
+        md = _maybe_repair_fences(md, fn, repair, page_warns)
+        _write(os.path.join(md_dir, fn), md)
         if page.get("api", True):
             models.append(extract.extract_endpoint(body, page, cfg["structure"]))
 

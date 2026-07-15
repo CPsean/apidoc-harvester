@@ -86,13 +86,17 @@ def build(models, oa_cfg):
     for m in models:
         if not m.get("path"):
             continue
+        # OpenAPI requires paths to start with "/"; RPC-style docs (e.g. Tencent
+        # Cloud actions) often don't. Normalize here — models.json keeps the raw
+        # path, and checks warns about the rewrite so it is never silent.
+        path = m["path"] if m["path"].startswith("/") else "/" + m["path"]
         method = (m.get("method") or default_method).lower()
         op = {
             "summary": m["title"],
-            "operationId": _op_id(m["path"], method, used),
+            "operationId": _op_id(path, method, used),
             "description": m.get("summary", ""),
         }
-        path_param_names = set(re.findall(r"\{([^}/]+)\}", m["path"]))
+        path_param_names = set(re.findall(r"\{([^}/]+)\}", path))
         path_params, body_fields = [], []
         for field in m.get("request") or []:
             if field.get("name") in path_param_names:
@@ -125,7 +129,7 @@ def build(models, oa_cfg):
             resp_content["example"] = m["example_response"]
         op["responses"] = {"200": {"description": "成功",
                                    "content": {"application/json": resp_content}}}
-        doc["paths"].setdefault(m["path"], {})[method] = op
+        doc["paths"].setdefault(path, {})[method] = op
     return doc
 
 

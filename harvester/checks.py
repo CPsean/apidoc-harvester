@@ -65,6 +65,8 @@ def run_checks(cfg, models, doc, oa_errors, root):
         for key in (env.get("code"), env.get("msg")):
             if key and key not in resp_names:
                 warns.append(f"{tag}: 响应缺少统一字段 '{key}'")
+        if m.get("path") and not m["path"].startswith("/"):
+            warns.append(f"{tag}: path 缺少前导 '/'（OpenAPI 中已补齐）: {m['path']}")
         # path {param}s absent from the request table are synthesized as string
         # parameters by build_openapi — surface that, don't let it happen silently
         if m.get("path"):

@@ -44,6 +44,7 @@ structure:
   required_true_values: ["是", "Y", "true", "必填"]
   columns: {name: 0, type: 1, required: 2, desc: 3}
   nested_indent_unit: 4
+  nest_prefix: "+"                 # 该站 markdown 表用 +field / ++sub 表示字段嵌套
 
 # ── Pages ────────────────────────────────────────────────────────────────────
 # content_api pages need nodeId + articleId. api:false → markdown only, no OpenAPI.

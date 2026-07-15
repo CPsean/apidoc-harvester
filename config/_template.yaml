@@ -144,4 +144,8 @@ output:
   models_json:  "out/CHANGE_ME/models.json"
   openapi:      "out/CHANGE_ME/openapi.yaml"
   report:       "out/CHANGE_ME/checks-report.json"
+  # repair_fences: false           # true: when a page's markdown has an odd number of
+  #                                #   ``` fences (broken source doc), append a closing
+  #                                #   fence and record a warn "fence repaired: <file>"
+  #                                #   instead of failing checks. Off = surface as fail.
 golden_dir: "golden/CHANGE_ME"

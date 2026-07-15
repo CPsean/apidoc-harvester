@@ -128,3 +128,24 @@
   `common.fetch_url` 支持 data（urllib 与 curl `--data-binary @-` 两路）。请求构造
   收敛为纯函数 `fetch._build_request`，可离线测试。同批：LOOP.md 新增"SPA 深挖
   方法论"小节（空壳判定→chunk 定位→bundle grep→验证→登录墙，使用者反馈 IMP-4）。
+- **#31 文件名非法字符崩溃** —— 信号：法大大某页标题末尾含 tab，Windows 写 `.md` 时
+  `OSError: [Errno 22]`，整个 run 中断（使用者反馈 BUG-7）。
+  改动：`common.safe_filename`（非法字符/控制字符→`_`、去尾部 `. `、保留设备名前置
+  `_`、150 字符截断），`pipeline` 两个写文件分支统一使用。只清洗文件名，正文标题
+  原样保留（忠实红线不受影响）。
+- **#32 代码围栏不配对可选修复** —— 信号：法大大某页响应示例源文档缺结尾围栏，
+  checks fail（使用者反馈 IMP-3；默认静默补全被拒——那是替厂商修文档）。
+  改动：`output.repair_fences: true`（默认 false）opt-in——写入前检测奇数围栏则补尾
+  并记 warn `fence repaired: <file>`；关闭时照旧 fail 暴露。
+- **#33 OpenAPI path 缺 `/` 前缀** —— 信号：腾讯云 RPC 风格用 Action 名作 path，
+  校验失败（使用者反馈 BUG-5）。
+  改动：`build_openapi.build` 对不以 `/` 开头的 path 补前缀；`models.json` 保留原始
+  path，checks 输出 warn"path 缺少前导 '/'（OpenAPI 中已补齐）"。注意：这是过渡
+  缓解，RPC 风格的正确建模（action→operationId + 网关头）仍是开放缺口。
+- **#34 markdown 内容跳过 endpoint 提取** —— 信号：法大大 content_api 返回干净
+  Markdown，pipeline 写完 `.md` 直接 continue，`endpoints: 0`（使用者反馈 BUG-1，
+  P0）。
+  改动：`pipeline._md_body`——markdown 经 `markdown` 库（tables/fenced_code 扩展）转
+  HTML 后复用 `extract.extract_endpoint`；`api: true` 的 markdown 页现在正常产出
+  OpenAPI。`requirements.txt` 增 `markdown>=3.4`；`fadada-dev.yaml` 补
+  `nest_prefix: "+"`（该站嵌套记法），endpoints 0→2 为预期输出变化。
