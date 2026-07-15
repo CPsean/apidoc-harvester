@@ -37,6 +37,9 @@ acquire:
     content_field: html
     page_id_field: doc_id           # page key to match; falls back to doc_id then id
     content_is: html                # html | markdown
+    # cache_dir: "out/CHANGE_ME/_bundle_cache"
+    #                               # where downloaded bundles are cached (default:
+    #                               #   out/<site>/_bundle_cache; local files not cached)
   rendered:                         # FALLBACK 2: headless render (needs playwright)
     enabled: false
     url_template: "https://docs.example.com/doc/{doc_id}"
@@ -52,7 +55,10 @@ preprocess:
     toggle_attr: onclick
     parentid_attr: parentid
     id_attr: id
-    skip_patterns: []
+    # row_id_regex: "toggle\\s*\\([^,]+,\\s*['\"]?([^,'\")]+)"
+    #                               # how to pull a row's id out of `toggle_attr` when
+    #                               #   the <tr> has no id attribute (group 1 = id)
+    skip_patterns: []               # regexes; matching tables are left untouched
 
 # ── Where title / time / body live in a page's HTML ──────────────────────────
 selectors:
@@ -89,10 +95,26 @@ structure:
 
 # ── Pages to harvest (static_html needs `file`; api strategies need `doc_id`) ─
 # Optional generated page lists. Explicit `pages` below override generated ids.
-# pages_from_manifest: "html/docs/_manifest.json"
+# pages_from_manifest: "html/docs/_manifest.json"   # bare path, or the full form:
+# pages_from_manifest:
+#   path: "html/docs/_manifest.json"
+#   items_key: "pages"              # name the list field explicitly; omitted = probe
+#                                   #   pages/items/docs/data, else treat dict as id->item
+#   id_field: id                    # manifest field -> page id
+#   title_field: title              # manifest field -> page title
+#   file_field: file                # manifest field -> page file (static_html)
+#   doc_id_field: doc_id            # manifest field -> page doc_id (api strategies)
+#   api_default: true               # `api:` for generated pages without their own
+#   non_api_ids: []                 # ids forced to api: false (overviews etc.)
 # pages_from_dir:
-#   path: "html/docs"
-#   title_selector: "h1"
+#   path: "html/docs"               # directory to scan
+#   pattern: ".html"                # filename suffix filter
+#   recursive: true
+#   file_base: "html"               # page `file` is made relative to this (default:
+#                                   #   acquire.static_html.html_root)
+#   title_selector: "h1"            # CSS selector for the title (default: selectors.title)
+#   api_default: true
+#   non_api_ids: []
 pages:
   - {id: "01", title: "Overview", doc_id: "OVERVIEW_ID", api: false}
   - {id: "02", title: "Create thing", doc_id: "DOC_ID_1"}

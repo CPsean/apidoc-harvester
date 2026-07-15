@@ -1,7 +1,7 @@
 # Writing a site config
 
 A site config is the ONLY file you write to support a new API-doc site. Copy
-`assets/engine/config/_template.yaml` to `config/<site>.yaml` and fill these in.
+`config/_template.yaml` to `config/<site>.yaml` and fill these in.
 `config/fadada.yaml` is a full worked example.
 
 ## spec_import — if an official spec exists, use it (cheapest, best)
@@ -59,8 +59,11 @@ cover, that's a new failure signal: extend `_normalize` in
   docs have no content API and the article HTML is embedded in webpack output. This
   strategy never executes JavaScript. Configure `bundle_urls` plus either a
   `record_regex` with named groups `id` and `content` (`title` optional), or an
-  `object_regex` plus `id_field` / `title_field` / `content_field`. Pages still come
-  from explicit `pages`, `pages_from_manifest`, or `pages_from_dir`.
+  `object_regex` plus `id_field` / `title_field` / `content_field`. Each page is
+  matched by `page_id_field` (default `doc_id`, falling back to `id`); the record's
+  content is treated as `content_is` (html | markdown). Remote bundles are cached
+  under `cache_dir` (default `out/<site>/_bundle_cache`) so re-runs are offline.
+  Pages still come from explicit `pages`, `pages_from_manifest`, or `pages_from_dir`.
 - `static_html`: point `html_root` at a folder of pre-downloaded `.html`; give each
   page a `file`.
 - `rendered`: headless browser (needs `pip install playwright && playwright install
@@ -84,6 +87,13 @@ article title, the "updated" timestamp, and the main content container.
 - `required_true_values`: strings in the "required" column that mean true.
 - `nested_indent_unit`: how many leading nbsp / full-width spaces equal one nesting
   level for tree-structured response fields. Inspect a nested table to measure it.
+- `nest_prefix`: opt-in alternative nesting notation — each leading occurrence of this
+  string on a field name (e.g. `+` in `+appStatus`, `++subField`) adds one nesting
+  level and is stripped from the name. Unset keeps indent-only behavior.
+- `section_match: regex`: opt-in when section headings carry numbering or prefixes
+  (e.g. `2. 输入参数`) that defeat the default exact/startswith matching — every
+  `*_section` marker (request/response/example) is then an `re.search` pattern,
+  e.g. `'^\d+[.、]?\s*请求参数'`. Default `exact` is the historical behavior.
 
 ## pages
 List each page. `static_html` needs `file`; `content_api`/`rendered` need `doc_id`.
@@ -92,13 +102,29 @@ For large sites, generate the list with `pages_from_manifest` (JSON manifest) or
 `pages_from_dir` (scan a local HTML directory and extract titles with a selector).
 Generated pages are merged first; explicit `pages` override matching ids.
 
+- `pages_from_manifest`: a bare path, or `{path, items_key, id_field, title_field,
+  file_field, doc_id_field, api_default, non_api_ids}`. Prefer naming the manifest's
+  list field with `items_key`; without it the loader probes `pages`/`items`/`docs`/
+  `data`, then treats a dict as an id→item map. The `*_field` options map manifest
+  fields onto the page keys `id`/`title`/`file`/`doc_id`. `non_api_ids` forces
+  `api: false` for the listed ids; `api_default` sets everything else.
+- `pages_from_dir`: `{path, pattern, recursive, file_base, title_selector,
+  api_default, non_api_ids}`. Scans `path` for files ending in `pattern` (default
+  `.html`), derives each page's `file` relative to `file_base` (default:
+  `acquire.static_html.html_root`) and its title via `title_selector` (default:
+  `selectors.title`, falling back to the filename).
+
 ## preprocess
 `preprocess.table_normalizer.enabled: true` normalizes tree tables before Markdown
 conversion and OpenAPI extraction. The default mode handles `parentid` /
-`onclick="toggle(...)"` / `colspan` wrappers. For VitePress-style tables that carry
-nesting in row attributes, set `nesting_mode: data_level` and optionally
-`level_attr: data-level`. Keep preprocessing off unless a site's tables are
-structurally unreadable by the standard `columns` + `nested_indent_unit` rules.
+`onclick="toggle(...)"` / `colspan` wrappers; row ids come from the `id_attr`
+attribute, or are pulled out of `toggle_attr` with `row_id_regex` (group 1 = id).
+For VitePress-style tables that carry nesting in row attributes, set
+`nesting_mode: data_level` and optionally `level_attr: data-level`. `indent_unit`
+controls how many nbsp per level the normalizer writes (match
+`structure.nested_indent_unit`); tables matching any `skip_patterns` regex are left
+untouched. Keep preprocessing off unless a site's tables are structurally
+unreadable by the standard `columns` + `nested_indent_unit` rules.
 
 ## openapi
 `title`, `version`, `servers` (use a `{host}` variable if the docs don't publish a fixed

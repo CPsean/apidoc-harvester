@@ -19,11 +19,12 @@ Layout:
 
 ## Commands
 
-The engine is plain Python (no build, no lint config, no test suite in this repo):
+The engine is plain Python (no build, no lint config):
 
 ```bash
 pip install -r requirements.txt          # beautifulsoup4, PyYAML, openapi-spec-validator
 python run.py config/fadada.yaml         # run one site's pipeline
+python -m unittest discover tests -v     # offline test suite (no network needed)
 ```
 
 Output lands in `out/<site>/`: `markdown/`, `models.json`, `openapi.yaml`,

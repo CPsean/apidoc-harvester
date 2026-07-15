@@ -66,7 +66,14 @@ def _page_from_manifest_item(key, item, spec):
     return page
 
 
-def _manifest_items(data):
+def _manifest_items(data, items_key=None):
+    """items_key (config) names the list field explicitly; without it we fall back
+    to probing common field names, then to treating a dict as an id->item map."""
+    if items_key:
+        items = data.get(items_key) if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            raise ValueError(f"pages_from_manifest: items_key '{items_key}' is not a list in the manifest")
+        return [(None, item) for item in items]
     if isinstance(data, list):
         return [(None, item) for item in data]
     if isinstance(data, dict):
@@ -87,7 +94,7 @@ def _pages_from_manifest(cfg, root):
     non_api_ids = {str(x) for x in spec.get("non_api_ids", [])}
     api_default = spec.get("api_default", True)
     pages = []
-    for key, item in _manifest_items(data):
+    for key, item in _manifest_items(data, spec.get("items_key")):
         page = _page_from_manifest_item(key, item, spec)
         page["id"] = str(page["id"])
         page.setdefault("title", page["id"])

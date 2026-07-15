@@ -1,6 +1,7 @@
 """The evaluator / oracle. Produces a machine-readable report the loop consumes.
 A 'fail' means the agent should patch a script or the config and re-run."""
 import os
+import re
 import difflib
 
 
@@ -64,6 +65,14 @@ def run_checks(cfg, models, doc, oa_errors, root):
         for key in (env.get("code"), env.get("msg")):
             if key and key not in resp_names:
                 warns.append(f"{tag}: 响应缺少统一字段 '{key}'")
+        # path {param}s absent from the request table are synthesized as string
+        # parameters by build_openapi — surface that, don't let it happen silently
+        if m.get("path"):
+            req_names = {n["name"] for n in m.get("request", [])}
+            synthesized = sorted(set(re.findall(r"\{([^}/]+)\}", m["path"])) - req_names)
+            if synthesized:
+                warns.append(f"{tag}: path 参数未在文档请求表中定义，"
+                             f"OpenAPI 已合成 string 参数: {', '.join(synthesized)}")
 
     if oa_errors:
         fails.append("OpenAPI 校验失败: " + "; ".join(oa_errors))

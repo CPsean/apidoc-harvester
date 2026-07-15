@@ -10,7 +10,6 @@ import re
 from . import common
 
 BR = "␤"        # placeholder for <br> in paragraph context -> markdown hard break
-CODE_NOISE = ["复制代码", "Copy", "复制"]   # trailing copy-button / line-number noise inside <pre>
 
 
 def _inline(node, cell=False):

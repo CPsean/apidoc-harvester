@@ -100,3 +100,15 @@
   #10 已验证的 urllib→curl 回退，且 SKILL.md 对 spec-mode 误承诺 Markdown/models 产物。
   改动：`spec_import` 增加必需字段校验，`common.fetch_url` 统一 URL 获取与 curl 回退，
   `fetch.py` / `spec_import.py` 共用该逻辑；`SKILL.md` 区分 spec-mode 与页面采集交付物。
+- **#26 path 参数合成从静默改为暴露** —— 信号：code review 指出 #14 会静默发明文档里
+  不存在的 path 参数（string 类型、空描述），违反"忠实收割、暴露不静默修"红线。
+  改动：`checks.run_checks` 对 path 模板中存在、请求表中缺失的参数输出 warn
+  （"path 参数未在文档请求表中定义，OpenAPI 已合成 string 参数"）。合成行为保留（无效
+  spec 不可取），但每次都可见。
+- **#27 manifest 列表键显式化** —— 信号：code review 指出 `_manifest_items` 靠探测
+  硬编码键名（pages/items/docs/data）猜 manifest 形状，属于把结构猜测焊进引擎。
+  改动：`pages_from_manifest` 新增 `items_key` 显式命名列表字段（指错即报错）；
+  未设置时保留探测顺序作为回退。同批：`_template.yaml`/`config-guide.md` 补齐
+  js_bundle.cache_dir、table_normalizer.row_id_regex、pages_from_* 全部子字段、
+  nest_prefix/section_match 的 guide 条目；删除 `convert.CODE_NOISE` 死代码副本；
+  CLAUDE.md 测试命令与事实同步。
