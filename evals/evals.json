@@ -49,6 +49,16 @@
         "Documentation inconsistencies are preserved, not silently corrected",
         "The inconsistencies are reported to the user at handoff"
       ]
+    },
+    {
+      "id": 6,
+      "prompt": "The harvest finished and checks pass, but the openapi.yaml is hard to read. Give me something browsable.",
+      "expected_output": "The skill generates a self-contained out/<site>/openapi.html next to the spec via `npx @redocly/cli build-docs` (offering Scalar's local-server try-it console as the alternative), without modifying the engine, and treats any generation failure as a non-blocking note with the manual command handed over.",
+      "assertions": [
+        "openapi.html is generated beside out/<site>/openapi.yaml using Redocly build-docs by default",
+        "If HTML generation fails (no Node/npx, network), the run's success verdict is unaffected and the manual command is provided",
+        "No engine script or output artifact is hand-edited to accomplish this"
+      ]
     }
   ]
 }

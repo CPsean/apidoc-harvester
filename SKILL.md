@@ -107,6 +107,36 @@ the Markdown set, and `models.json`. For spec-mode configs, hand the user the va
 Note any documentation inconsistencies you preserved rather than silently "fixed" (e.g.
 field typos, examples that disagree with tables).
 
+**HTML view of the spec (all pipelines).** Raw `openapi.yaml` is hard for a human to
+review — especially on the spec-mode path, where it is the only artifact. Once checks
+pass, generate a browsable HTML page next to it (ask first when the user is present;
+in autonomous/non-interactive runs generate by default):
+
+```bash
+npx -y @redocly/cli build-docs out/<site>/openapi.yaml -o out/<site>/openapi.html
+```
+
+This emits a self-contained single file — open via `file://`, works offline, no CDN.
+If the user wants an interactive try-it console instead, offer
+`npx -y @scalar/cli document serve out/<site>/openapi.yaml` (runs a local server;
+Scalar's CLI has no static-HTML export). HTML generation is best-effort garnish: if
+Node/`npx` is missing or the command fails, state the reason, hand the user the
+command above to run manually, and move on — never retry in a loop, and never let it
+affect the run's success verdict (`checks-report.json` stays the sole judge).
+
+Known failure signal: on very large specs (multi-MB with a heavy schema graph, e.g.
+Docusign eSignature's 3.7 MB / 213 paths), `build-docs` dies with *JavaScript heap
+out of memory* during "Prerendering docs" — raising `NODE_OPTIONS=--max-old-space-size`
+does **not** save it. Fallback that still yields a static single file (verified on
+that same Docusign spec): inline Scalar's client-side bundle, which lazy-renders and
+handles large specs fine. Fetch the bundle once —
+`npm pack @scalar/api-reference && tar -xzf scalar-api-reference-*.tgz` gives
+`package/dist/browser/standalone.js` — then assemble
+`<div id="app"></div>` + `<script id="api-reference" type="application/json">{spec
+as JSON, with "</" escaped as "<\/"}</script>` + `<script>{standalone.js inlined}
+</script>` into `openapi.html`. If Node/npm is unavailable entirely, offer
+`npx -y @scalar/cli document serve` as the served (non-artifact) alternative.
+
 ## What the generated OpenAPI does and doesn't do
 The builder maps types, required flags, nested objects, the response envelope, and
 security headers deterministically. It **does not auto-guess enums** from prose (it keeps
