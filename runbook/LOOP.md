@@ -48,6 +48,20 @@
 
 > 注：沙箱网络是 allowlist 的，目标站点可能不可直连——脚本写对即可，在能访问该域名的环境执行。
 
+### SPA 深挖方法论（Network 面板一眼找不到时）
+有些 SPA（Vue/React 门户）不是"一个 XHR 返回正文"，链路藏得深。按序深挖：
+1. **空壳判定**：`curl -s <doc-url> | wc -c` 小于 ~10KB 且无正文文本 → 纯 SPA，正文必经异步来源。
+2. **webpack chunk 定位**：首页 HTML 里找入口 JS 与 chunk 映射（`__webpack_require__`、
+   `<link rel="modulepreload">`、`assets/*.js` 清单），下载相关 chunk。
+3. **bundle 内 grep API 形态**：在 JS 里搜 `/api/`、`baseURL`、`axios.create`、`.get(`、`.post(`、
+   `fetch(`——拼出内容接口的 URL 形态与必带 header（法大大 dev 门户即由 baseURL map 发现，见 #7）。
+   若正文直接内嵌在 bundle 里（无接口），改用 `acquire.js_bundle` 静态提取（#20）。
+4. **回 Network 面板验证**：用拼出的 URL 直接请求，核对 `content_pointer` 字段路径。
+5. **登录墙**：接口需要登录态时，把 cookie/token 放环境变量，config 里写
+   `headers: {Cookie: "${SITE_COOKIE}"}`（`${VAR}` 取自环境，凭证不进 config/仓库）；
+   POST 型内容接口配 `body_template`。slug→内部 id 的解析若藏在多级静态 JSON 配置里
+   （如 esign 门户），一次 Network 抓包比纯逆向 JS 省时。
+
 ## 何时升级给 Agent（按需介入，而非每次全程）
 - 新站点首次接入：写 config + 跑通循环。
 - checks 出现"未见过的"失败形态：扩展对应脚本。

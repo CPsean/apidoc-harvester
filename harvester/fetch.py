@@ -5,8 +5,37 @@ import json
 import re
 import ast
 import hashlib
+import urllib.parse
 
 from . import common
+
+_ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _env_sub(value):
+    """Resolve ${VAR} from the environment. Missing var = hard error naming the
+    variable; resolved values are never printed — keeps credentials out of configs
+    (and out of this public repo's examples)."""
+    def rep(m):
+        var = m.group(1)
+        v = os.environ.get(var)
+        if v is None:
+            raise RuntimeError(f"config 引用了环境变量 ${{{var}}} 但未设置（export {var}=... 后重试）")
+        return v
+    return _ENV_RE.sub(rep, value)
+
+
+def _quote_url(url):
+    """Percent-encode non-ASCII / unsafe chars; % stays safe so already-encoded
+    URLs are not double-encoded."""
+    return urllib.parse.quote(url, safe=":/?&=%#")
+
+
+def _fmt_body_value(v, fields):
+    """Env-substitute first (escaping braces inside resolved values), then apply
+    {page-field} templating — so a secret containing '{' can't break .format."""
+    v = _ENV_RE.sub(lambda m: _env_sub(m.group(0)).replace("{", "{{").replace("}", "}}"), v)
+    return v.format(**fields)
 
 
 def _get_pointer(obj, dotted):
@@ -17,24 +46,40 @@ def _get_pointer(obj, dotted):
     return obj
 
 
-def _content_api(page, cfg, _root):
-    ca = cfg["acquire"]["content_api"]
-    if not ca.get("enabled"):
-        return None
+def _build_request(page, ca):
+    """Pure request construction (no network) — testable offline.
+    Returns (url, method, headers, data)."""
     # Template URL with the whole page dict + a doc_id alias, so configs can use
     # {doc_id} (single-id) or several keys like {nodeId}/{articleId} (multi-id).
     fields = dict(page)
     fields.setdefault("doc_id", page.get("doc_id") or page.get("id"))
-    url = ca["url_template"].format(**fields)
+    url = _quote_url(ca["url_template"].format(**fields))
     # Default Accept + any site-specific request headers from config
     # (some gateways 403 without an XHR marker / version header).
     headers = {"Accept": "application/json"}
-    headers.update(ca.get("headers") or {})
-    raw = common.fetch_url(url, headers=headers, method=ca.get("method", "GET"), timeout=30)
+    for k, v in (ca.get("headers") or {}).items():
+        headers[k] = _env_sub(str(v))
+    method = ca.get("method", "GET").upper()
+    data = None
+    bt = ca.get("body_template")
+    if bt and method in ("POST", "PUT"):
+        body = {k: _fmt_body_value(v, fields) if isinstance(v, str) else v
+                for k, v in bt.items()}
+        data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        headers.setdefault("Content-Type", "application/json")
+    return url, method, headers, data
+
+
+def _content_api(page, cfg, _root):
+    ca = cfg["acquire"]["content_api"]
+    if not ca.get("enabled"):
+        return None
+    url, method, headers, data = _build_request(page, ca)
+    raw = common.fetch_url(url, headers=headers, method=method, timeout=30, data=data)
     fmt = ca.get("response_format", "json")
     if fmt == "json":
-        data = json.loads(raw)
-        content = _get_pointer(data, ca["content_pointer"])
+        payload = json.loads(raw)
+        content = _get_pointer(payload, ca["content_pointer"])
         return {"format": ca.get("content_is", "html"), "content": content}
     return {"format": fmt, "content": raw}
 
@@ -57,7 +102,7 @@ def _rendered(page, cfg, _root):
     except ImportError:
         raise RuntimeError("rendered strategy needs: pip install playwright && playwright install chromium")
     doc_id = page.get("doc_id") or page.get("id")
-    url = rc["url_template"].format(doc_id=doc_id)
+    url = _quote_url(rc["url_template"].format(doc_id=doc_id))
     with sync_playwright() as p:
         b = p.chromium.launch()
         pg = b.new_page()

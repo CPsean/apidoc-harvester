@@ -53,6 +53,13 @@ cover, that's a new failure signal: extend `_normalize` in
     (e.g. `nodeId`, `articleId`) and reference them as `{nodeId}/{articleId}`.
   - `headers`: optional per-site request headers. Some gateways return 403 unless an
     XHR marker / version header is present (e.g. `X-Requested-With: XMLHttpRequest`).
+    Values may embed `${ENV_VAR}` — resolved from the environment at fetch time, so
+    login cookies/tokens stay out of the config file (missing var = hard error naming
+    the variable; resolved values are never printed). URLs are percent-encoded
+    automatically (Chinese ids in `url_template` fields are safe).
+  - `body_template`: for `method: POST/PUT` content APIs (search/pagination style) —
+    a JSON object; string values get the same `{page-field}` templating as
+    `url_template` plus `${ENV_VAR}` interpolation; sent as `application/json`.
   - For SPA portals, the real API host is often different from the doc host — check the
   JS bundle's baseURL map. `config/fadada-dev.yaml` is a worked content_api example.
 - `js_bundle`: static extraction from one or more SPA JavaScript bundles when the

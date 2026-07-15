@@ -21,7 +21,15 @@ acquire:
     content_is: html                # html | markdown
     headers: {}                     # optional site request headers, e.g.
                                     #   {X-Requested-With: XMLHttpRequest} if the
-                                    #   gateway 403s plain requests
+                                    #   gateway 403s plain requests. Values may embed
+                                    #   ${ENV_VAR} — resolved from the environment at
+                                    #   fetch time (missing var = hard error naming it;
+                                    #   resolved values are never printed), e.g.
+                                    #   {Cookie: "${SITE_COOKIE}"} for login-walled docs
+    # body_template:                # optional JSON body when method is POST/PUT.
+    #   articleId: "{articleId}"    #   string values get {page-field} templating like
+    #   token: "${SITE_TOKEN}"      #   url_template, plus ${ENV_VAR} interpolation.
+    #                               #   Sent as Content-Type: application/json.
   static_html:                      # FALLBACK 1: pre-downloaded HTML files
     enabled: false
     html_root: ".."                 # relative to the project root

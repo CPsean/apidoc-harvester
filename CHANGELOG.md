@@ -112,3 +112,19 @@
   js_bundle.cache_dir、table_normalizer.row_id_regex、pages_from_* 全部子字段、
   nest_prefix/section_match 的 guide 条目；删除 `convert.CODE_NOISE` 死代码副本；
   CLAUDE.md 测试命令与事实同步。
+- **#28 URL 含非 ASCII 字符报编码错** —— 信号：腾讯电子签部分分类名含中文路径，
+  `urllib` 报 `'ascii' codec can't encode`（使用者反馈 BUG-6）。
+  改动：`fetch._quote_url`（`quote(url, safe=":/?&=%#")`，% 在 safe 集内防双重编码），
+  `_content_api` 与 `_rendered` 的 URL 均过它。
+- **#29 content_api 登录鉴权头（env 注入）** —— 信号：上上签等站点内容接口需登录态，
+  静态 headers 无法表达且凭证不能进 config/公开仓库（使用者反馈 FEAT-1；登录表单
+  自动化因脆弱与凭证责任被拒绝）。
+  改动：`fetch._env_sub`——headers 值支持 `${ENV_VAR}`，取自环境变量；缺失即报错且
+  只报变量名不打印值。
+- **#30 POST 型 content_api** —— 信号：上上签 searchDocs 端点是 POST + JSON body，
+  原 content_api 只支持 GET（使用者反馈 FEAT-3）。
+  改动：`content_api.body_template`（method POST/PUT 时生效）——字符串值先 `${VAR}`
+  env 替换（解析值内花括号转义）再 `{page-field}` 模板化，JSON 序列化发送；
+  `common.fetch_url` 支持 data（urllib 与 curl `--data-binary @-` 两路）。请求构造
+  收敛为纯函数 `fetch._build_request`，可离线测试。同批：LOOP.md 新增"SPA 深挖
+  方法论"小节（空壳判定→chunk 定位→bundle grep→验证→登录墙，使用者反馈 IMP-4）。

@@ -13,11 +13,12 @@ ARROWS = "▶▼►▸"        # expand/collapse glyphs to strip from tree-cell 
 CODE_NOISE = ("复制代码", "Copy", "复制")
 
 
-def fetch_url(url, headers=None, timeout=120, method="GET") -> str:
-    """Fetch text with urllib first, then curl as a proxy/TLS fallback."""
+def fetch_url(url, headers=None, timeout=120, method="GET", data=None) -> str:
+    """Fetch text with urllib first, then curl as a proxy/TLS fallback.
+    data: optional request body bytes (POST/PUT)."""
     headers = dict(headers or {})
     try:
-        req = urllib.request.Request(url, method=method, headers=headers)
+        req = urllib.request.Request(url, method=method, headers=headers, data=data)
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.read().decode("utf-8", "replace")
     except Exception as urllib_err:  # noqa: BLE001
@@ -32,8 +33,11 @@ def fetch_url(url, headers=None, timeout=120, method="GET") -> str:
             cmd.extend(["-H", f"{key}: {value}"])
         if method and method.upper() != "GET":
             cmd.extend(["-X", method.upper()])
+        if data is not None:
+            cmd.extend(["--data-binary", "@-"])
         cmd.append(url)
-        proc = subprocess.run(cmd, capture_output=True, timeout=max(timeout * 5, 60))
+        proc = subprocess.run(cmd, capture_output=True, input=data,
+                              timeout=max(timeout * 5, 60))
         if proc.returncode != 0 or not proc.stdout:
             raise RuntimeError(
                 f"urllib failed ({urllib_err}); curl fallback failed "

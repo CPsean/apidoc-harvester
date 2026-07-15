@@ -55,6 +55,7 @@ class AcceptancePlanTests(unittest.TestCase):
             headers={"Accept": "application/json", "X-Test": "1"},
             method="GET",
             timeout=30,
+            data=None,
         )
 
     def test_fetch_url_uses_curl_fallback(self):
