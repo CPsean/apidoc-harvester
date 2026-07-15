@@ -155,3 +155,19 @@
   ——一次性拉树、按 `page_fields` 映射生成 `config/<site>.pages.yaml` 边车（生成头注释、
   可审 git diff）；正常 run 只读边车（`config_loader` 合并，内联 pages 按 id 优先），
   绝不隐式访问树 API——树变更以可审 diff 落地，运行保持确定性/离线。
+- **#36 openapi.yaml 裸读困难 → 交付步骤新增 HTML 阅读页** —— 信号：spec_import 快速
+  路径只产 openapi.yaml + checks-report，是三条获取路径中唯一没有面向人的可读产物的，
+  人工核对裸 YAML 体验差（使用者反馈）。
+  改动：引擎零改动。SKILL.md §6 Deliver 新增收尾步骤——checks 通过后用
+  `npx -y @redocly/cli build-docs` 在 out/<site>/ 生成自包含单文件 openapi.html
+  （file:// 离线可看，默认）；Scalar `document serve` 作为 try-it 控制台备选。
+  所有产 openapi.yaml 的管线统一适用；交互中先征询、问不到用户默认生成；生成失败
+  降级为提示+手动命令，不影响 run 成败判定。frontmatter 触发描述不扩（"现成 yaml
+  转 HTML"不是本 skill 独立职责）；evals.json 增 #6 行为断言；config-guide
+  spec_import 节补命令指引。
+  落地时实测发现的边界（已写入 SKILL.md）：build-docs 对超大 spec（docusign-esign
+  3.7MB/213 paths）在 "Prerendering docs" 阶段 JS 堆 OOM，`--max-old-space-size=8192`
+  也救不回；10-path 子集 6 秒产出 4.3MB 自包含 HTML，正常尺寸无碍。Scalar CLI 确认
+  无静态导出（仅 serve）。大 spec 静态备选已实测可行：npm pack @scalar/api-reference
+  取 standalone.js，与 spec JSON 一起内联成单文件 HTML（6.8MB），浏览器懒渲染
+  同一 docusign spec 正常（侧边栏/操作/搜索齐全）；配方已写入 SKILL.md §6。

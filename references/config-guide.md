@@ -30,6 +30,11 @@ validate (ALL errors, bucketed with counts) → emit. The report carries `paths`
 errors, green after `normalize: true`). Only fall through to page scraping below
 when there is no published spec.
 
+For a human-readable view of any emitted `openapi.yaml` (this path produces no
+Markdown), generate a self-contained HTML page beside it:
+`npx -y @redocly/cli build-docs out/<name>/openapi.yaml -o out/<name>/openapi.html`
+(details and the Scalar try-it alternative are in SKILL.md step 6).
+
 `normalize: true` applies mechanical rules only — it never invents content:
 missing required strings (response `description`, oauth2 flow `tokenUrl`) are
 filled with `""`; invalid type spellings (`int`/`long`/`float`/`double`/`date`/
