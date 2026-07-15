@@ -120,6 +120,15 @@ Generated pages are merged first; explicit `pages` override matching ids.
   `.html`), derives each page's `file` relative to `file_base` (default:
   `acquire.static_html.html_root`) and its title via `title_selector` (default:
   `selectors.title`, falling back to the filename).
+- `pages_from_tree`: for sites with a tree/menu API (`/document/nodes`, leftMenu,
+  sidebar JSON). `{url, headers, root_pointer, children_pointer, leaf_only,
+  page_fields, api_default, non_api_ids}` — `page_fields` maps page keys onto tree
+  fields (map a stable tree id onto `id`; the ordinal fallback shifts when nodes
+  are inserted). Unlike the two loaders above, this one is **not** applied at run
+  time: `python run.py config/<site>.yaml --sync-pages` fetches the tree once and
+  writes a `config/<site>.pages.yaml` sidecar; normal runs merge that file
+  (inline `pages:` win by id) and never hit the tree API — tree changes land as a
+  reviewable git diff, and runs stay deterministic.
 
 ## preprocess
 `preprocess.table_normalizer.enabled: true` normalizes tree tables before Markdown

@@ -149,3 +149,9 @@
   HTML 后复用 `extract.extract_endpoint`；`api: true` 的 markdown 页现在正常产出
   OpenAPI。`requirements.txt` 增 `markdown>=3.4`；`fadada-dev.yaml` 补
   `nest_prefix: "+"`（该站嵌套记法），endpoints 0→2 为预期输出变化。
+- **#35 目录树 API → pages 边车生成** —— 信号：法大大/腾讯/上上签都有目录树 API，
+  每次接站都要手写脚本解析树、拼 pages（使用者反馈 FEAT-2）。
+  改动：新增 `pages_from_tree` config + `run.py --sync-pages` + `harvester/sync_pages.py`
+  ——一次性拉树、按 `page_fields` 映射生成 `config/<site>.pages.yaml` 边车（生成头注释、
+  可审 git diff）；正常 run 只读边车（`config_loader` 合并，内联 pages 按 id 优先），
+  绝不隐式访问树 API——树变更以可审 diff 落地，运行保持确定性/离线。

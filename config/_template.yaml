@@ -123,6 +123,20 @@ structure:
 #   title_selector: "h1"            # CSS selector for the title (default: selectors.title)
 #   api_default: true
 #   non_api_ids: []
+# pages_from_tree:                  # remote tree/menu API -> reviewable sidecar.
+#   url: "https://docs.example.com/api/doc/tree"
+#   headers: {}                     #   ${ENV_VAR} supported, like content_api
+#   root_pointer: "data.nodes"      #   dotted path to the top-level node list
+#   children_pointer: "children"    #   field holding child nodes (recursed)
+#   leaf_only: true                 #   only nodes without children become pages
+#   page_fields: {nodeId: "id", title: "name", articleId: "articleId"}
+#                                   #   page-key <- tree-field; map a STABLE tree id
+#                                   #   onto `id` (ordinal fallback shifts on inserts)
+#   api_default: true
+#   non_api_ids: []
+#   # Run `python run.py config/<site>.yaml --sync-pages` to (re)generate
+#   # config/<site>.pages.yaml; normal runs only read that file and NEVER hit
+#   # the tree API. Review the sidecar's git diff before harvesting.
 pages:
   - {id: "01", title: "Overview", doc_id: "OVERVIEW_ID", api: false}
   - {id: "02", title: "Create thing", doc_id: "DOC_ID_1"}

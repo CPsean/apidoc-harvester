@@ -11,12 +11,19 @@ from harvester import __version__, config_loader, pipeline  # noqa: E402
 def main():
     if len(sys.argv) < 2:
         print("usage: python run.py <config.yaml>")
+        print("       python run.py <config.yaml> --sync-pages")
         print("       python run.py --version")
         sys.exit(2)
     if sys.argv[1] in ("--version", "-V"):
         print(f"apidoc-harvester {__version__}")
         sys.exit(0)
     config_path = sys.argv[1]
+    if "--sync-pages" in sys.argv[2:]:
+        from harvester import sync_pages
+        path, count = sync_pages.sync(config_path)
+        print(f"wrote {count} pages -> {path}")
+        print("review the diff, then run the pipeline normally.")
+        sys.exit(0)
     cfg = config_loader.load_config(config_path)
     # Top of the acquisition ladder: if the config points at an already-published
     # spec, ingest it directly instead of scraping pages.

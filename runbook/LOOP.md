@@ -70,3 +70,5 @@
 
 ## 与定时任务结合
 周期性 `run.py` → 和上一份 `out/` 快照 diff → 有变化则告警（文档更新检测）。
+页面清单变更（站点目录树增删改）：跑 `python run.py config/<site>.yaml --sync-pages`
+→ 审 `config/<site>.pages.yaml` 的 git diff → 再跑正常 run。
