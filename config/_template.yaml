@@ -158,6 +158,9 @@ output:
   models_json:  "out/CHANGE_ME/models.json"
   openapi:      "out/CHANGE_ME/openapi.yaml"
   report:       "out/CHANGE_ME/checks-report.json"
+  # Incremental reruns are explicit: `python run.py config/<site>.yaml --update`.
+  # The state file is written beside the site outputs, e.g.
+  # `out/CHANGE_ME/.harvest-state.json`. Normal runs stay full rebuilds.
   # repair_fences: false           # true: when a page's markdown has an odd number of
   #                                #   ``` fences (broken source doc), append a closing
   #                                #   fence and record a warn "fence repaired: <file>"

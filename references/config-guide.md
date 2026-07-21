@@ -135,6 +135,23 @@ Generated pages are merged first; explicit `pages` override matching ids.
   (inline `pages:` win by id) and never hit the tree API — tree changes land as a
   reviewable git diff, and runs stay deterministic.
 
+## rerun/update strategy
+Normal runs are full rebuilds: `python run.py config/<site>.yaml` fetches every current
+page, rewrites Markdown, rebuilds `models.json` and emits a fresh OpenAPI spec.
+
+For an already-harvested site, use explicit incremental mode:
+`python run.py config/<site>.yaml --update`. It still fetches the current page list,
+but hashes each raw body before conversion. If the raw content hash, page title/API
+flag, and conversion fingerprint are unchanged, the pipeline reuses the previous
+Markdown/model from `out/<site>/.harvest-state.json` and skips conversion/extraction
+for that page.
+
+Removed pages are reported as `stale` in `checks-report.json` and kept on disk for
+manual review, but they are excluded from the new OpenAPI. Current API pages that fail
+to fetch still fail the run; stale output is never used to pretend a broken fetch
+succeeded. When the site's tree/menu may have changed, run `--sync-pages` first,
+review the generated sidecar diff, then run `--update`.
+
 ## preprocess
 `preprocess.table_normalizer.enabled: true` normalizes tree tables before Markdown
 conversion and OpenAPI extraction. The default mode handles `parentid` /

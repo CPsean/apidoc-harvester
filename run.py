@@ -11,6 +11,7 @@ from harvester import __version__, config_loader, pipeline  # noqa: E402
 def main():
     if len(sys.argv) < 2:
         print("usage: python run.py <config.yaml>")
+        print("       python run.py <config.yaml> --update")
         print("       python run.py <config.yaml> --sync-pages")
         print("       python run.py --version")
         sys.exit(2)
@@ -31,7 +32,7 @@ def main():
         from harvester import spec_import
         report = spec_import.run(config_path)
     else:
-        report = pipeline.run(config_path)
+        report = pipeline.run(config_path, update="--update" in sys.argv[2:])
     print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
     if report["fails"]:
         print("\nFAILS:")

@@ -5,12 +5,15 @@ import re
 import difflib
 
 
-def _md_noise(md_dir):
+def _md_noise(md_dir, active_files=None):
     issues = []
     if not os.path.isdir(md_dir):
         return ["markdown dir missing: " + md_dir]
+    active = set(active_files) if active_files is not None else None
     for fn in sorted(os.listdir(md_dir)):
         if not fn.endswith(".md"):
+            continue
+        if active is not None and fn not in active:
             continue
         with open(os.path.join(md_dir, fn), encoding="utf-8") as f:
             txt = f.read()
@@ -44,7 +47,7 @@ def _golden_diff(md_dir, golden_dir):
     return issues
 
 
-def run_checks(cfg, models, doc, oa_errors, root):
+def run_checks(cfg, models, doc, oa_errors, root, active_markdown_files=None):
     out = cfg["output"]
     md_dir = os.path.join(root, out["markdown_dir"])
     golden_dir = os.path.join(root, cfg.get("golden_dir", "")) if cfg.get("golden_dir") else None
@@ -79,7 +82,7 @@ def run_checks(cfg, models, doc, oa_errors, root):
     if oa_errors:
         fails.append("OpenAPI 校验失败: " + "; ".join(oa_errors))
 
-    noise = _md_noise(md_dir)
+    noise = _md_noise(md_dir, active_markdown_files)
     fails.extend(noise)
     golden = _golden_diff(md_dir, golden_dir)
     warns.extend(golden)

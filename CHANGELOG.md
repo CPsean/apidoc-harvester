@@ -180,3 +180,10 @@
   `required` 列表出现重复元素，OpenAPI 校验可能报 `has non-unique elements`。
   改动：`build_openapi._object_from` 对 required 列表 `dict.fromkeys` 去重保序，
   与 properties dict 的同名字段收敛行为一致。
+- **#39 老站点重跑成本高且下架语义不清** —— 信号：已有产物的网站维护时，全量重跑会重复
+  转换/抽取未变化页面；页面下架后缺少明确策略，容易在“保留审计痕迹”和“新 spec 排除旧页”
+  之间摇摆。
+  改动：`run.py --update` + `harvester/update_state.py`——更新模式按 raw content hash 与
+  转换指纹复用未变化页面的旧 Markdown/model，状态写入 `out/<site>/.harvest-state.json`；
+  移出当前页面清单的旧页报告为 `stale`、保留文件但不进入新 OpenAPI；当前 API 页 fetch
+  失败仍 fail，不用旧产物掩盖。

@@ -94,6 +94,15 @@ change to a script or the config, **show the diff, get the user's OK**, apply, a
 Repeat until green and stable. Read the loop runbook before your first fix — it explains
 the classification and the one-time content-api discovery.
 
+For an already-harvested site, prefer the maintenance path: if the doc tree may have
+changed, run `python run.py config/<site>.yaml --sync-pages` first and review the
+sidecar diff for added/removed pages. Then run
+`python run.py config/<site>.yaml --update`. Update mode still fetches current pages,
+but reuses unchanged Markdown/models from `out/<site>/.harvest-state.json`; removed
+pages are reported as `stale` and kept on disk, but excluded from the new OpenAPI.
+API pages that fail to fetch still fail the run rather than being masked by stale
+output.
+
 ### 5. Converge and record
 When page-harvesting output is green and stable, freeze the verified Markdown into
 `golden/<site>/` (snapshot regression guard). For any engine behavior change, append
