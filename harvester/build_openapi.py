@@ -27,7 +27,7 @@ def _object_from(children):
     if props:
         s["properties"] = props
     if required:
-        s["required"] = required
+        s["required"] = list(dict.fromkeys(required))
     return s
 
 

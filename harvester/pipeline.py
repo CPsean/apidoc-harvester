@@ -1,6 +1,7 @@
 """Orchestrator: fetch -> convert -> extract -> build_openapi -> checks for one config."""
 import os
 import json
+import re
 
 import yaml
 
@@ -26,6 +27,11 @@ def _maybe_repair_fences(md, filename, repair, warns):
         warns.append(f"fence repaired: {filename}")
         return md.rstrip("\n") + "\n```\n"
     return md
+
+
+def _normalize_markdown_fence_markers(md):
+    """Normalize CommonMark-valid indented bare backtick fences for python-markdown."""
+    return re.sub(r"^(\s{0,3})(`{3,})\s*$", r"\2", md, flags=re.MULTILINE)
 
 
 def _md_body(md_text):
@@ -60,7 +66,7 @@ def run(config_path):
             continue
         fn = common.safe_filename(f"{page['id']}_{page['title']}") + ".md"
         if raw["format"] == "markdown":
-            md = raw["content"].rstrip() + "\n"
+            md = _normalize_markdown_fence_markers(raw["content"]).rstrip() + "\n"
             md = _maybe_repair_fences(md, fn, repair, page_warns)
             _write(os.path.join(md_dir, fn), md)
             if page.get("api", True):

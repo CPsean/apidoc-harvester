@@ -171,3 +171,12 @@
   无静态导出（仅 serve）。大 spec 静态备选已实测可行：npm pack @scalar/api-reference
   取 standalone.js，与 spec JSON 一起内联成单文件 HTML（6.8MB），浏览器懒渲染
   同一 docusign spec 正常（侧边栏/操作/搜索齐全）；配方已写入 SKILL.md §6。
+- **#37 markdown 闭合围栏前导空格** —— 信号：法大大 content_api 返回的 markdown
+  中闭合围栏带 1-3 空格缩进，python-markdown fenced_code 不识别，开围栏延伸吞掉
+  后续小节标题和参数表，extract 找不到请求/响应表。
+  改动：`pipeline._normalize_markdown_fence_markers` 在 markdown 直取分支写入/抽取前，
+  将行首 0-3 空格 + 3+ 反引号 + 行尾空白的纯围栏标记归一为顶格反引号围栏。
+- **#38 OpenAPI required 数组重复** —— 信号：文档参数表存在同名字段且都 required 时，
+  `required` 列表出现重复元素，OpenAPI 校验可能报 `has non-unique elements`。
+  改动：`build_openapi._object_from` 对 required 列表 `dict.fromkeys` 去重保序，
+  与 properties dict 的同名字段收敛行为一致。
