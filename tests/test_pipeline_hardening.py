@@ -69,6 +69,11 @@ class RepairFencesTest(unittest.TestCase):
         self.assertEqual(md, "x\n```json\n{}")
         self.assertEqual(warns, [])
 
+    def test_indented_bare_backtick_fences_are_normalized(self):
+        md = "```js\nexample\n ```   \n请求地址：/sign-task/owner/get-download-url\n"
+        normalized = pipeline._normalize_markdown_fence_markers(md)
+        self.assertIn("\n```\n请求地址", normalized)
+
 
 class PathSlashTest(unittest.TestCase):
     def test_build_prefixes_and_checks_warns(self):
@@ -86,6 +91,28 @@ class PathSlashTest(unittest.TestCase):
         self.assertEqual(models[0]["path"], "DescribeBillUsage")
 
 
+class RequiredDedupTest(unittest.TestCase):
+    def test_required_list_is_deduplicated_in_schema(self):
+        models = [{
+            "id": "dup",
+            "title": "Dup",
+            "path": "/dup",
+            "method": "POST",
+            "summary": "",
+            "request": [
+                {"name": "fieldDocId", "type": "String", "required": True,
+                 "desc": "first", "children": []},
+                {"name": "fieldDocId", "type": "String", "required": True,
+                 "desc": "second", "children": []},
+            ],
+            "response": [],
+        }]
+        doc = build_openapi.build(models, {})
+        schema = doc["paths"]["/dup"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+        self.assertEqual(schema["required"], ["fieldDocId"])
+        self.assertEqual(list(schema["properties"].keys()), ["fieldDocId"])
+
+
 class MarkdownExtractionTest(unittest.TestCase):
     def test_md_body_extracts_endpoint(self):
         from harvester import extract
@@ -98,6 +125,35 @@ class MarkdownExtractionTest(unittest.TestCase):
         self.assertEqual(draft["children"][0]["name"], "name")
         self.assertEqual(draft["children"][0]["children"][0]["name"], "ext")
         self.assertEqual(m["example_response"], {"code": "0"})
+
+    def test_indented_closing_fence_does_not_swallow_endpoint_sections(self):
+        from harvester import extract
+        md = pipeline._normalize_markdown_fence_markers("""# 获取签署文档下载地址
+
+```js
+请求参数中 customName 对应的值
+ ```
+
+请求地址：/sign-task/owner/get-download-url
+请求方式：POST
+
+### 请求参数
+
+| 参数名 | 类型 | 是否必须 | 描述 |
+| --- | --- | --- | --- |
+| signTaskId | String | 是 | 签署任务 id |
+
+### 响应结果
+
+| 参数名 | 类型 | 是否必须 | 描述 |
+| --- | --- | --- | --- |
+| code | Integer | 是 | 状态码 |
+""")
+        body = pipeline._md_body(md)
+        m = extract.extract_endpoint(body, {"id": "152", "title": "获取签署文档下载地址"}, STRUCT)
+        self.assertEqual(m["path"], "/sign-task/owner/get-download-url")
+        self.assertEqual(m["request"][0]["name"], "signTaskId")
+        self.assertEqual(m["response"][0]["name"], "code")
 
 
 if __name__ == "__main__":
